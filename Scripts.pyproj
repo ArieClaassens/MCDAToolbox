@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" DefaultTargets="Build">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{151e32b0-c7e7-4127-acda-ad78d2a170b0}</ProjectGuid>
+    <ProjectHome />
+    <StartupFile>add_mcda_fields.py</StartupFile>
+    <SearchPath>C:\Python27\</SearchPath>
+    <WorkingDirectory>.</WorkingDirectory>
+    <OutputPath>.</OutputPath>
+    <ProjectTypeGuids>{888888a0-9f3d-457c-b088-3a5042f75d52}</ProjectTypeGuids>
+    <LaunchProvider>Standard Python launcher</LaunchProvider>
+    <InterpreterId />
+    <InterpreterVersion />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'" />
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'" />
+  <PropertyGroup>
+    <VisualStudioVersion Condition=" '$(VisualStudioVersion)' == '' ">10.0</VisualStudioVersion>
+    <PtvsTargetsFile>$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets</PtvsTargetsFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <Content Include="Metadata_Notes.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="add_mcda_fields.py" />
+    <Compile Include="calc_score.py" />
+    <Compile Include="get_accidents.py" />
+    <Compile Include="get_hazard_count.py" />
+    <Compile Include="clip_landcover.py" />
+    <Compile Include="create_report.py" />
+    <Compile Include="get_primary_cluster_location.py" />
+    <Compile Include="get_aspect.py" />
+    <Compile Include="get_infrastructure.py" />
+    <Compile Include="get_keyfeatures.py" />
+    <Compile Include="get_landcover.py" />
+    <Compile Include="get_poi.py" />
+    <Compile Include="get_pop_impact.py" />
+    <Compile Include="get_rivers.py" />
+    <Compile Include="get_slope.py" />
+    <Compile Include="notes.py">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
+  <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" Condition="!Exists($(PtvsTargetsFile))" />
+</Project>
