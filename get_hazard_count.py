@@ -58,6 +58,17 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
+# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+def fieldexist(featureclass, fieldname):
+    """
+    Test for the existence of fieldname in featureclass.
+    Input: featureclass to check and fieldname to look for.
+    Returns: True if the field exists, False if it does not.
+    """
+    fieldlist = arcpy.ListFields(featureclass, fieldname)
+    fieldcount = len(fieldlist)
+    return bool(fieldcount == 1)
+
 def get_projection(featureclass):
     """
     Find and return the spatial reference name of a feature class.
@@ -120,7 +131,7 @@ HAZARDSLIST_FEATLAYER = [] # Empty list that will store the feature layers
 COUNTER = 0
 
 # Define the query filter
-# Should we only update or process all records? True if selected by the user
+# Should we only update or process all records?
 if not UPDATE_ONLY:
     QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
 else:
@@ -132,24 +143,23 @@ LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 #########################################################
 # Fishnet parameters
-description = arcpy.Describe(SOURCE_FC)
-# Export the full text string to ensure a 100% match, preventing
-# discrepancies with differing central meridians, for example.
-proj = description.SpatialReference.exporttostring()
-# Set coordinate system of the output fishnet
-env.outputCoordinateSystem = proj
+# Apply the source data projection to the fishnet feature class to ensure
+# consistent projection across the data sets
+PROJ = get_projection(FC_DESC)
+# Set coordinate system of the fishnet
+env.outputCoordinateSystem = PROJ
 # In_memory storage of the fishnet, discarded after processing
-outFeatureClass = "in_memory/fishnet3by3"
-# Enter 0 for width and height - these values will be calculated by the tool
-cellSizeWidth = '0'
-cellSizeHeight = '0'
+FISHNET_FC = "in_memory/fishnet3by3"
+# Enter 0 for width and height, these values will be calculated by the tool
 # Number of rows and columns together with origin and opposite corner
 # determine the size of each cell
+cellSizeWidth = '0'
+cellSizeHeight = '0'
 numRows =  '3'
 numColumns = '3'
-# Set the origin of the fishnet to a default value; update in each row
+# Set the origin of the fishnet to a default value; update dynamically per row
 originCoordinate = '0 0'
-# Set the orientation by specifying a point on the Y axis. Update in each record
+# Set the orientation by specifying a point on the Y axis. Update in each row
 yAxisCoordinate = '0 0'
 # Set the opposite corner of the fishnet to a default value; update in each row
 oppositeCorner = '0 0'
@@ -158,7 +168,7 @@ templateExtent = '#'
 # Each output cell will be a polygon. Slower than polyline, but we're processing
 # one DHA at a time and using in_memory storage to improve performance
 geometryType = 'POLYGON'
-# Generate an additional feature class containing the fishnet labels?
+# Don't generate an additional feature class containing fishnet labels
 labels = 'NO_LABELS'
 
 
@@ -189,7 +199,7 @@ try:
     # Sanity checks:
 
     # Remove the in_memory fishnet in case the script was terminated unexpectedly
-    arcpy.Delete_management(outFeatureClass)
+    arcpy.Delete_management(FISHNET_FC)
 
     # Check if the target feature class has any features before we start
     if int(arcpy.GetCount_management(SOURCE_FC)[0]) == 0:
@@ -249,7 +259,6 @@ try:
             sys.exit(0)
 
     # Adjust the fields list to include the Object ID and Shape data
-    FC_DESC = arcpy.Describe(SOURCE_FC)
     LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
     FIELDLIST = ['OBJECTID', 'SHAPE@', REQUIRED_FIELDS]
 
@@ -257,6 +266,7 @@ try:
     arcpy.AddMessage("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 
+    # Hoekom doen ons hierdie een? Is dit nodig?
     arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
     #arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
@@ -272,7 +282,7 @@ try:
         HAZARDSLIST_FEATLAYER.append(itemFlayerName)
         #arcpy.AddMessage(listInfraFeatLayer)
 
-    arcpy.AddMessage("Starting with the Features' processing....")
+    arcpy.AddMessage("Starting with the hazard areas processing....")
 
     with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, FILTER_QUERY) as cursor:
         for row in cursor:
@@ -280,63 +290,121 @@ try:
             COUNTER += 1
             # https://docs.python.org/2.7/library/decimal.html
             pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) * 100
-            arcpy.AddMessage("Processing OID " + str(row[0]) +
-                             ", with HAZARD_COUNT of " + str(row[1]) +
-                             ". Feature " + str(COUNTER) + " of " +
-                             str(RECORD_COUNT) + " or " + str(pctDone) + " %")
+            LOGGER.info("Processing OID " + str(row[0]) + ". Feature " +
+                        str(COUNTER) + " of " + str(RECORD_COUNT) +
+                        " or " + str(pctDone) + " %")
 
-            # HERE!!!!!!!!!!!!!!!!!!!!!!!!!
-            # Now loop over items in Infrastructure list and tally up the total
-            # after parsing all of them
-            # Select the current feature from original Hazard FC
-            arcpy.SelectLayerByAttribute_management("inputHazard",
-                                                    "NEW_SELECTION",
-                                                    "OBJECTID = " + str(row[0]))
+            # Get the feature's extent from the @SHAPE data
+            extent = row[1].extent
+            # display the current values
+            LOGGER.debug("SW: {0}. S: {1}. SE: {2}. W: {3}. CENTER: {4}. \
+                         E: {5}. NW: {6}. N: {7}. NE: {8}"
+                         .format(row[4], row[5], row[6], row[7], row[8],
+                                 row[9], row[10], row[11], row[12]))
+            LOGGER.debug("XMin: {0}, YMin: {1}, XMax: {0}, YMax: {1}"
+                  .format(extent.XMin, extent.YMin, extent.XMax, extent.YMax))
 
-            ###############################
-            # Initialize the COUNTER, with its local scope, to zero
-            totHazards = 0
-            ##############################
-            # Now loop through INFRASTRUCTURE feature layers and get the intersection
-            for fc in HAZARDSLIST_FEATLAYER:
-                #arcpy.AddMessage("Now processing Feature Layer : " + fc)
-                # Takes longer due to the buffering done as part of each query.
-                # But faster than clipping source and using that.
-                # Less risk of losing or modding data too.
-                outputAcc = arcpy.SelectLayerByLocation_management(fc,
-                                                                   "WITHIN_A_DISTANCE_GEODESIC",
-                                                                   "inputHazard",
-                                                                   BUFFER_DISTM, "")
-                # Count the rows and add it to the COUNTER
-                # The RECORD_COUNT2 method produces way larger results, e.g. 13
-                # versus the 1 reported by looping through the rows.
-                #RECORD_COUNT2 = int(arcpy.GetCount_management(outputInfrastructure).getOutput(0))
-                #arcpy.AddMessage("RECORD_COUNT2 is: " +  str(RECORD_COUNT2))
-                for row2 in outputAcc:
-                    # arcpy.AddMessage OIDs of selected features
-                    #arcpy.AddMessage(row2.getSelectionSet())
-                    #arcpy.AddMessage("\tRunning the row2 inside loop")
-                    totHazards += 1
-                    # http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy-data-access/featureclasstonumpyarray.htm
-                    #arr = arcpy.da.FeatureClassToNumPyArray(row2, "OID@",skip_nulls=True) # Should we do the skip_nulls?
-                    #arcpy.AddMessage("Total Accidents in radius: " + str(arr["OID@"].sum()))
-                    #totPop = arr["grid_code"].sum()
+            lowerleft = str(extent.XMin) + " " + str(extent.YMin)
+            upperright = str(extent.XMax) + " " + str(extent.YMax)
+            # Add 0.1 degree on the Y axis to generate the Y axis coordinate
+            yAxisCoordinate = str(extent.XMin)  + " " + str(extent.YMin + 0.1)
+            # Corners:
+            originCoordinate = lowerleft
+            oppositeCorner = upperright
 
-                #arcpy.AddMessage("ROW totHazards is: " + str(totHazards))
-
-            # Update the row with the population sum
-            #arcpy.AddMessage("totHazards is: "+ str(totHazards))
-            # Cast to integer to ensure we deal with integer values
-            totHazards = int(totHazards)
+            LOGGER.info("Creating the feature's fishnet")
+            # Create 3 x 3 fishnet over the current hazard area
+            arcpy.CreateFishnet_management(outFeatureClass, originCoordinate,
+                                           yAxisCoordinate, None, None, numRows,
+                                           numColumns, oppositeCorner, labels,
+                                           None, geometryType)
 
 
-            arcpy.AddMessage("Hazards Count: " + str(totHazards))
-            # Assign the new value to the Accidents field
-            row[1] = totHazards
+            # Build dictionary of fishnet cells and hazard count per cell.
+            # The 3x3 Fishnet is generated from bottom left to top right, i.e
+            # SW, S, SE, W, CENTER, E, NW, N and lastly NE. See the grid
+            # below, generated at http://www.tablesgenerator.com/text_tables
+            # +----+--------+----+
+            # | NW |    N   | NE |
+            # +----+--------+----+
+            # |  W | CENTER |  E |
+            # +----+--------+----+
+            # | SW |    S   | SE |
+            # +----+--------+----+
+            # Create a dictionary to hold the predefined keys and values
+            clusterDictionary = {'SW':0, 'S':0, 'SE':0, 'W':0, 'CENTER':0,
+                                 'E':0, 'NW':0, 'N':0, 'NE':0}
 
-            # Assign the buffer distance to the Accidents buffer distance field
-            row[2] = BUFFER_DIST
+            # create a counter to use for the dictionary manipulation
+            fishnetCounter = 0
+
+            LOGGER.info("Processing the fishnet")
+             # Loop through the 9 fishnet cells and intersect with hazards FC to count hazards in each cell
+            for row2 in arcpy.da.SearchCursor(outFeatureClass, "SHAPE@"):
+                LOGGER.debug("Processing fishnet feature class row {0}".format(fishnetCounter))
+
+                # Loop through the Hazards Feature layer list to find the total
+                # using the locally scope variable below
+                TOTAL_HAZARDS = 0
+
+                for fc in HAZARDSLIST_FEATLAYER:
+                    # Filter the HAZARDS_FC1 and HAZARDS_FC2 on the current hazard area so that we only count the hazards falling inside this hazard area
+                    arcpy.SelectLayerByLocation_management(fc, "WITHIN", row[0],
+                                                           "", "NEW_SELECTION", "")
+                    hazardbyCell = arcpy.SelectLayerByLocation_management(fc, "WITHIN", fishnetCounter[0])
+                    CELL_RESULT = arcpy.GetCount_management(hazardbyCell)
+                    TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
+
+                    # Remove the filter on the HAZARDS FC by clearing the selection
+                    arcpy.SelectLayerByAttribute_management(fc,"CLEAR_SELECTION","")
+
+                # Now we have the total hazards in this cell
+                LOGGER.debug("TOTAL_HAZARDS is now: {0}".format(TOTAL_HAZARDS))
+
+                # Assign the hazard count to the fishnet polygon that is currently being processed.
+                if fishnetCounter == 0:
+                   clusterDictionary['SW'] = countHazards
+                elif fishnetCounter == 1:
+                   clusterDictionary['S'] = countHazards
+                elif fishnetCounter == 2:
+                   clusterDictionary['SE'] = countHazards
+                elif fishnetCounter == 3:
+                   clusterDictionary['W'] = countHazards
+                elif fishnetCounter == 4:
+                   clusterDictionary['CENTER'] = countHazards
+                elif fishnetCounter == 5:
+                   clusterDictionary['E'] = countHazards
+                elif fishnetCounter == 6:
+                   clusterDictionary['NW'] = countHazards
+                elif fishnetCounter == 7:
+                   clusterDictionary['N'] = countHazards
+                else:
+                   clusterDictionary['NE'] = countHazards
+
+                # Increment counter
+                fishnetCounter += 1
+
+            # Print the cluster dictionary now that we have looped over all the cells
+            LOGGER.debug("clusterDictionary is: {0}".format(clusterDictionary))
+
+            # Update the row with the new values
+            row[4] = clusterDictionary['SW']
+            row[5] = clusterDictionary['S']
+            row[6] = clusterDictionary['SE']
+            row[7] = clusterDictionary['W']
+            row[8] = clusterDictionary['CENTER']
+            row[9] = clusterDictionary['E']
+            row[10] = clusterDictionary['NW']
+            row[11] = clusterDictionary['N']
+            row[12] = clusterDictionary['NE']
+
+            LOGGER.info("Updating the feature")
             cursor.updateRow(row)
+
+            # Delete the dictionary
+            del clusterDictionary
+            # Remove the fishnet in preparation for the next row
+            arcpy.Delete_management(outFeatureClass)
 
     STOP_TIME = time.time()
     arcpy.AddMessage("Total execution time in seconds = " +

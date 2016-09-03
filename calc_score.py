@@ -62,6 +62,17 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
+# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+def fieldexist(featureclass, fieldname):
+    """
+    Test for the existence of fieldname in featureclass.
+    Input: featureclass to check and fieldname to look for.
+    Returns: True if the field exists, False if it does not.
+    """
+    fieldlist = arcpy.ListFields(featureclass, fieldname)
+    fieldcount = len(fieldlist)
+    return bool(fieldcount == 1)
+
 def check_weights_same(weightslist):
     """
     Check for at least two unique weights assigned to the full list of factors.

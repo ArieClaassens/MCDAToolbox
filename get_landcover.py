@@ -52,6 +52,17 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
+# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+def fieldexist(featureclass, fieldname):
+    """
+    Test for the existence of fieldname in featureclass.
+    Input: featureclass to check and fieldname to look for.
+    Returns: True if the field exists, False if it does not.
+    """
+    fieldlist = arcpy.ListFields(featureclass, fieldname)
+    fieldcount = len(fieldlist)
+    return bool(fieldcount == 1)
+
 def get_projection(featureclass):
     """
     Find and return the spatial reference name of a feature class.

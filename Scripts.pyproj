@@ -30,7 +30,6 @@
     <Compile Include="get_hazard_count.py" />
     <Compile Include="clip_landcover.py" />
     <Compile Include="create_report.py" />
-    <Compile Include="get_primary_cluster_location.py" />
     <Compile Include="get_aspect.py" />
     <Compile Include="get_infrastructure.py" />
     <Compile Include="get_keyfeatures.py" />
