@@ -1,5 +1,7 @@
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
 
+# Add a filter in script on parameters - define the specific feature class types that are allowed as input, e.g. POINT
+
 # Add License as a separate script?
 ############################################################################################
 # Primary quadrant detection - overlay hazards FC over DHA FC and find the quadrant with the most hazards.

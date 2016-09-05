@@ -32,6 +32,8 @@ from decimal import Decimal, getcontext #For progress COUNTER
 #import collections
 import arcpy
 from arcpy import env
+
+
 ########################################################
 # Functions and classes
 # Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
@@ -125,52 +127,16 @@ arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELDS = ['SW', 'S', 'SE', 'W', 'CENTER', 'E', 'NW', 'N', 'NE']
 REQUIRED_FIELD = 'SW' # Which field must we filter on and check for?
-# Use the SW field as a proxy for all nine cells
+# Use the SW field as a proxy for all nine fishnet (grid) cells
 HAZARDS_LIST = [] # Empty list that will store the feature classes to process
 HAZARDSLIST_FEATLAYER = [] # Empty list that will store the feature layers
 COUNTER = 0
 
-# Define the query filter
-# Should we only update or process all records?
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
+
 
 ########################################################
 # Tool configuration:
-
 #########################################################
-# Fishnet parameters
-# Apply the source data projection to the fishnet feature class to ensure
-# consistent projection across the data sets
-PROJ = get_projection(FC_DESC)
-# Set coordinate system of the fishnet
-env.outputCoordinateSystem = PROJ
-# In_memory storage of the fishnet, discarded after processing
-FISHNET_FC = "in_memory/fishnet3by3"
-# Enter 0 for width and height, these values will be calculated by the tool
-# Number of rows and columns together with origin and opposite corner
-# determine the size of each cell
-cellSizeWidth = '0'
-cellSizeHeight = '0'
-numRows =  '3'
-numColumns = '3'
-# Set the origin of the fishnet to a default value; update dynamically per row
-originCoordinate = '0 0'
-# Set the orientation by specifying a point on the Y axis. Update in each row
-yAxisCoordinate = '0 0'
-# Set the opposite corner of the fishnet to a default value; update in each row
-oppositeCorner = '0 0'
-# Extent set by origin and opposite corner, no need for a template feature class
-templateExtent = '#'
-# Each output cell will be a polygon. Slower than polyline, but we're processing
-# one DHA at a time and using in_memory storage to improve performance
-geometryType = 'POLYGON'
-# Don't generate an additional feature class containing fishnet labels
-labels = 'NO_LABELS'
-
 
 # Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
@@ -192,6 +158,47 @@ LOGGER.debug("------- START LOGGING-----------")
 # Use the default arcpy.AddMessage method to only show this in the tool output
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
+
+# Define the query filter
+# Should we only update or process all records?
+if not UPDATE_ONLY:
+    FILTER_QUERY = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    FILTER_QUERY = ""
+LOGGER.debug("FILTER_QUERY is: " + FILTER_QUERY)
+
+
+# Fishnet creation parameters
+# Apply the source data projection to the fishnet feature class to ensure
+# consistent projection across the data sets
+PROJ = get_projection(SOURCE_FC)
+# Set coordinate system of the fishnet
+env.outputCoordinateSystem = PROJ
+# In_memory storage of the fishnet, thus discarded after processing
+FISHNET_FC = "in_memory/fishnet3by3"
+# Use 0 for width and height as these values will be calculated by the tool
+# The number of rows and columns, together with origin and opposite corner, will
+# determine the size of each cell, which will vary but always provide nine cells
+cellSizeWidth = '0'
+cellSizeHeight = '0'
+numRows =  '3'
+numColumns = '3'
+# Set the origin of the fishnet to a default value; update dynamically per row
+originCoordinate = '0 0'
+# Set the orientation by specifying a point on the Y axis. Update in each row
+yAxisCoordinate = '0 0'
+# Set the opposite corner of the fishnet to a default value; update in each row
+oppositeCorner = '0 0'
+# Extent set by origin and opposite corner, no need for a template feature class
+templateExtent = '#'
+# Each output cell will be a polygon. Slower than polyline, but we're processing
+# one DHA at a time and using in_memory storage to improve performance
+geometryType = 'POLYGON'
+# Don't generate an additional feature class containing fishnet labels
+labels = 'NO_LABELS'
+
+
+
 
 # Put everything in a try/finally statement, so that we can close the logger
 # even if script bombs out or we call an execution error along the line
@@ -260,16 +267,21 @@ try:
 
     # Adjust the fields list to include the Object ID and Shape data
     LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
-    FIELDLIST = ['OBJECTID', 'SHAPE@', REQUIRED_FIELDS]
+    # Insert the fields at the start of the list to obtain the required
+    # field ordering
+    REQUIRED_FIELDS.insert(0,'SHAPE@')
+    REQUIRED_FIELDS.insert(0,'OBJECTID')
+    FIELDLIST = REQUIRED_FIELDS
+    LOGGER.info(FIELDLIST)
 
 #############################################################################
     arcpy.AddMessage("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 
-    # Hoekom doen ons hierdie een? Is dit nodig?
+    # Hoekom doen ons hierdie een? Is dit nodig? Vir RECORD_COUNT
     arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-    #arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
+    arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
 
     #Create feature layers out of Hazards FC
     LIST_COUNT = 0
@@ -299,8 +311,8 @@ try:
             # display the current values
             LOGGER.debug("SW: {0}. S: {1}. SE: {2}. W: {3}. CENTER: {4}. \
                          E: {5}. NW: {6}. N: {7}. NE: {8}"
-                         .format(row[4], row[5], row[6], row[7], row[8],
-                                 row[9], row[10], row[11], row[12]))
+                         .format(row[2], row[3], row[4], row[5], row[6],
+                                 row[7], row[8], row[9], row[10]))
             LOGGER.debug("XMin: {0}, YMin: {1}, XMax: {0}, YMax: {1}"
                   .format(extent.XMin, extent.YMin, extent.XMax, extent.YMax))
 
@@ -314,7 +326,7 @@ try:
 
             LOGGER.info("Creating the feature's fishnet")
             # Create 3 x 3 fishnet over the current hazard area
-            arcpy.CreateFishnet_management(outFeatureClass, originCoordinate,
+            arcpy.CreateFishnet_management(FISHNET_FC, originCoordinate,
                                            yAxisCoordinate, None, None, numRows,
                                            numColumns, oppositeCorner, labels,
                                            None, geometryType)
@@ -340,63 +352,69 @@ try:
 
             LOGGER.info("Processing the fishnet")
              # Loop through the 9 fishnet cells and intersect with hazards FC to count hazards in each cell
-            for row2 in arcpy.da.SearchCursor(outFeatureClass, "SHAPE@"):
-                LOGGER.debug("Processing fishnet feature class row {0}".format(fishnetCounter))
 
-                # Loop through the Hazards Feature layer list to find the total
-                # using the locally scope variable below
-                TOTAL_HAZARDS = 0
+            with arcpy.da.SearchCursor(FISHNET_FC, "SHAPE@") as cursor2:
+                for row2 in cursor2:
+                    LOGGER.debug("Processing fishnet feature class row {0}".format(fishnetCounter))
+                    # Loop through the Hazards Feature layer list to find the total
+                    # using the locally scope variable below
+                    TOTAL_HAZARDS = 0
+                    LOGGER.info("Starting with hazards feature list processing")
+                    for fc in HAZARDSLIST_FEATLAYER:
+                        LOGGER.info("  Processing hazard feature class: {0}".format(fc))
+                        # Filter the HAZARDS_FC1 and HAZARDS_FC2 on the current hazard area so that we only count the hazards falling inside this hazard area
+                        arcpy.SelectLayerByLocation_management(fc, "WITHIN", row[1],
+                                                               "", "NEW_SELECTION", "")
+                        #sys.exit()
+                        #hazardbyCell = arcpy.SelectLayerByLocation_management(fc, "WITHIN", fishnetCounter[0])
+                        #LOGGER.debug(hazardbyCell)
+                        #CELL_RESULT = arcpy.GetCount_management(hazardbyCell)
+                        arcpy.SelectLayerByLocation_management(fc, "WITHIN", row2[0])
+                        CELL_RESULT = arcpy.GetCount_management(fc)
+                        TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
+                        LOGGER.info("  TOTAL_HAZARDS is: {0}".format(TOTAL_HAZARDS))
+                        # Remove the filter on the HAZARDS FC by clearing the selection
+                        arcpy.SelectLayerByAttribute_management(fc,"CLEAR_SELECTION","")
 
-                for fc in HAZARDSLIST_FEATLAYER:
-                    # Filter the HAZARDS_FC1 and HAZARDS_FC2 on the current hazard area so that we only count the hazards falling inside this hazard area
-                    arcpy.SelectLayerByLocation_management(fc, "WITHIN", row[0],
-                                                           "", "NEW_SELECTION", "")
-                    hazardbyCell = arcpy.SelectLayerByLocation_management(fc, "WITHIN", fishnetCounter[0])
-                    CELL_RESULT = arcpy.GetCount_management(hazardbyCell)
-                    TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
+                    # Now we have the total hazards in this cell
+                    LOGGER.debug("TOTAL_HAZARDS is now: {0}".format(TOTAL_HAZARDS))
 
-                    # Remove the filter on the HAZARDS FC by clearing the selection
-                    arcpy.SelectLayerByAttribute_management(fc,"CLEAR_SELECTION","")
+                    # Assign the hazard count to the fishnet polygon that is currently being processed.
+                    if fishnetCounter == 0:
+                       clusterDictionary['SW'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 1:
+                       clusterDictionary['S'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 2:
+                       clusterDictionary['SE'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 3:
+                       clusterDictionary['W'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 4:
+                       clusterDictionary['CENTER'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 5:
+                       clusterDictionary['E'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 6:
+                       clusterDictionary['NW'] = TOTAL_HAZARDS
+                    elif fishnetCounter == 7:
+                       clusterDictionary['N'] = TOTAL_HAZARDS
+                    else:
+                       clusterDictionary['NE'] = TOTAL_HAZARDS
 
-                # Now we have the total hazards in this cell
-                LOGGER.debug("TOTAL_HAZARDS is now: {0}".format(TOTAL_HAZARDS))
-
-                # Assign the hazard count to the fishnet polygon that is currently being processed.
-                if fishnetCounter == 0:
-                   clusterDictionary['SW'] = countHazards
-                elif fishnetCounter == 1:
-                   clusterDictionary['S'] = countHazards
-                elif fishnetCounter == 2:
-                   clusterDictionary['SE'] = countHazards
-                elif fishnetCounter == 3:
-                   clusterDictionary['W'] = countHazards
-                elif fishnetCounter == 4:
-                   clusterDictionary['CENTER'] = countHazards
-                elif fishnetCounter == 5:
-                   clusterDictionary['E'] = countHazards
-                elif fishnetCounter == 6:
-                   clusterDictionary['NW'] = countHazards
-                elif fishnetCounter == 7:
-                   clusterDictionary['N'] = countHazards
-                else:
-                   clusterDictionary['NE'] = countHazards
-
-                # Increment counter
-                fishnetCounter += 1
+                    # Increment counter
+                    fishnetCounter += 1
 
             # Print the cluster dictionary now that we have looped over all the cells
             LOGGER.debug("clusterDictionary is: {0}".format(clusterDictionary))
 
             # Update the row with the new values
-            row[4] = clusterDictionary['SW']
-            row[5] = clusterDictionary['S']
-            row[6] = clusterDictionary['SE']
-            row[7] = clusterDictionary['W']
-            row[8] = clusterDictionary['CENTER']
-            row[9] = clusterDictionary['E']
-            row[10] = clusterDictionary['NW']
-            row[11] = clusterDictionary['N']
-            row[12] = clusterDictionary['NE']
+            row[2] = clusterDictionary['SW']
+            row[3] = clusterDictionary['S']
+            row[4] = clusterDictionary['SE']
+            row[5] = clusterDictionary['W']
+            row[6] = clusterDictionary['CENTER']
+            row[7] = clusterDictionary['E']
+            row[8] = clusterDictionary['NW']
+            row[9] = clusterDictionary['N']
+            row[10] = clusterDictionary['NE']
 
             LOGGER.info("Updating the feature")
             cursor.updateRow(row)
@@ -404,7 +422,7 @@ try:
             # Delete the dictionary
             del clusterDictionary
             # Remove the fishnet in preparation for the next row
-            arcpy.Delete_management(outFeatureClass)
+            arcpy.Delete_management(FISHNET_FC)
 
     STOP_TIME = time.time()
     arcpy.AddMessage("Total execution time in seconds = " +
