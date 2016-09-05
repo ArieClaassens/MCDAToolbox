@@ -120,6 +120,14 @@ arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELD = "LANDCOVER" # Which field must we filter on and check for?
 
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
+
 # Tool configuration:
 # Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
@@ -142,20 +150,11 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
-
 ###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
 # even if script bombs out or we call an execution error along the line
 try:
     # Sanity checks:
-
     # Check if the target feature class has any features before we start
     if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \

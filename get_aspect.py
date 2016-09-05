@@ -14,7 +14,7 @@ Calculates the Aspect value for the Hazards Feature Class using the
 Aspect raster with the Get Cell Value Spatial Analysis Tool
 """
 
-# If it is a polygon, we need to find the centroid and use that for the aspect?
+# If it is a polygon, we need to find the centroid and use that for the aspect
 ########################################################
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
@@ -113,7 +113,7 @@ LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
 TARGET_FC = arcpy.GetParameterAsText(3)
 ASPECT_RASTER = arcpy.GetParameterAsText(4)
-UPDATE_ONLY = arcpy.GetParameterAsText(5)
+UPDATE_ONLY = arcpy.GetParameterAsText(5) # Boolean result received as text
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
@@ -154,6 +154,8 @@ arcpy.AddMessage("Your Log file is: " + LOGFILE)
 # Put everything in a try/finally statement, so that we can close the logger
 # even if script bombs out or we call an execution error along the line
 try:
+    # Sanity checks:
+
     # Check if the target feature class has any features before we start
     if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \

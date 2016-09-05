@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        getLandCover
-# Purpose:     Calculates the Land Cover value for each feature.
+# Name:        getAspect
+# Purpose:     Calculates the aspect value for each feature.
 #
 # Author:      Arie Claassens
 #
@@ -10,8 +10,8 @@
 #------------------------------------------------------------------------------
 
 """
-Calculates the LandCover value for the Hazards Feature Class using the
-LandCover raster with the Get Cell Value Spatial Analysis Tool
+Calculates the Aspect value for the Hazards Feature Class using the
+Aspect raster with the Get Cell Value Spatial Analysis Tool
 """
 
 # If it is a polygon, we need to find the centroid and use that for the aspect
@@ -112,13 +112,21 @@ LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
 TARGET_FC = arcpy.GetParameterAsText(3)
-LANDCOVER_RASTER = arcpy.GetParameterAsText(4)
+ASPECT_RASTER = arcpy.GetParameterAsText(4)
 UPDATE_ONLY = arcpy.GetParameterAsText(5) # Boolean result received as text
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
-REQUIRED_FIELD = "LANDCOVER" # Which field must we filter on and check for?
+REQUIRED_FIELD = "ASPECT" # Which field must we filter on and check for?
+
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Tool configuration:
 # Set up the logging parameters and inform the user
@@ -130,7 +138,7 @@ BACKUPCOUNT = 10
 # Change this variable to a unique identifier for each script it runs in.
 # Cannot use LOGGER.findCaller(), as we're calling from an embedded script in
 # the Python toolbox.
-LOGSTAMP = "AddLandCover" # Identifies the source of the log entries
+LOGSTAMP = "AddAspect" # Identifies the source of the log entries
 LOGGER = logging.getLogger(LOGSTAMP)
 HANDLER = ArcPyLogHandler(LOGFILE, MAXBYTES, BACKUPCOUNT)
 FORMATTER = logging.Formatter("%(asctime)s %(name)-15s %(levelname)-8s %(message)s")
@@ -142,20 +150,11 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
-
 ###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
 # even if script bombs out or we call an execution error along the line
 try:
-    # Sanity checks:
-
+	# Sanity checks:
     # Check if the target feature class has any features before we start
     if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \
@@ -170,11 +169,11 @@ try:
         raise arcpy.ExecuteError
 
     # Check if the raster layer has any features before we start
-    if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
+    if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ALLNODATA").
            getOutput(0)) == 1:
         LOGGER.error("{0} has no features. Please use a raster layer that \
                       already contains the required features and attributes." \
-                      .format(LANDCOVER_RASTER))
+                      .format(ASPECT_RASTER))
         raise arcpy.ExecuteError
 
     # Check if we have the required extension, otherwise stop the script.
@@ -188,7 +187,7 @@ try:
         LIST_FC = [] # Emtpy list to store FC
         # Add spatial references of all items
         LIST_FC.append(get_projection(TARGET_FC))
-        LIST_FC.append(get_projection(LANDCOVER_RASTER))
+        LIST_FC.append(get_projection(ASPECT_RASTER))
         LOGGER.debug("The list of spatial references to check is:")
         LOGGER.debug(LIST_FC)
         LOGGER.info("Comparing spatial references of the data sets")
@@ -199,12 +198,12 @@ try:
             # See https://docs.python.org/2/library/sys.html#sys.exit
             sys.exit(0)
 
-    # Identify NoData value for the Raster.
-    # WHAT DO WE DO WITH IT? SUBSTITUE A USER-SUPPLIED VALUE?!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    # Identify NoData value for the Raster
     # See http://gis.stackexchange.com/questions/111449/how-to-access-raster-nodata-value
-    RASTER_OBJ = arcpy.Raster(LANDCOVER_RASTER)
-    NODATA = RASTER_OBJ.noDataValue
+    RASTER_OBJECT = arcpy.Raster(ASPECT_RASTER)
+    NODATA = RASTER_OBJECT.noDataValue
     LOGGER.debug("NODATA is: "+str(NODATA))
+
 
     # Determine if we are working with a POINT or POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
@@ -221,69 +220,73 @@ try:
     feature class with a POINT or POLYGON shape type")
         raise arcpy.ExecuteError
 
-    LOGGER.info("Starting the Land Cover calculations")
+    LOGGER.info("Starting the Aspect calculations")
     START_TIME = time.time()
 
-    # Get the total number of records - how long to create a feature layer, just
-    # so that we can count the records? Is there a better way?
-    # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
+    # Find a better way of calculating the total number of rows to be updated
+    #COUNT_RECORDS = collections.Counter(row[0] for row in
+    #                                    arcpy.da.SearchCursor(TARGET_FC, "OBJECTID",
+    #                                                          QRY_FILTER))
+
+    # See https://docs.python.org/2.7/library/collections.html#collections.COUNTER
+    #COUNT_RECORDS = sum(COUNT_RECORDS.values())
     COUNT_RECORDS = 0
     LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-    #arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
-    #arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
-    #COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
-    # Destroy the temporary table
-    #arcpy.Delete_management("tableViewHazards")
     with arcpy.da.SearchCursor(TARGET_FC, ["OBJECTID"], QRY_FILTER) as countcursor:
         for row in countcursor:
             COUNT_RECORDS += 1
             LOGGER.debug("COUNT_RECORDS is now: " + str(COUNT_RECORDS))
 
-    LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
+    LOGGER.debug("COUNT_RECORDS END: " + str(COUNT_RECORDS))
+    # What is the purpose of this test? Duplicated?
     if COUNT_RECORDS == 0:
-        LOGGER.error("The Hazards FC does not contain any features to process.")
+        arcpy.AddError("The Hazards FC does not contain any features to process.")
         raise arcpy.ExecuteError
 
     COUNTER = 0
 
-    with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST) as cursor:
+    with arcpy.da.UpdateCursor(TARGET_FC, FIELD_LIST, QRY_FILTER) as cursor:
         for row in cursor:
             COUNTER += 1
-            # https://docs.python.org/3/library/decimal.html - decimal output
+            # https://docs.python.org/3/library/decimal.html
             pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) *100
             LOGGER.info("Processing OID " + str(row[0]) +
-                        ", with current LANDCOVER value of "+ str(row[3]) +
-                        ". Feature " + str(COUNTER) + " of " +
-                        str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
+                             ", with current ASPECT value of "+ str(row[3]) +
+                             ". Feature " + str(COUNTER) + " of " +
+                             str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
             # Print the coordinate tuple
-            #print(str(row[1]) + " " + str(row[2]))
-            # Set a default value to cater for NoData returned by GetCellValue
+            LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
+            # Set a default value to cater for NoData results
             cellvalue = -2
-            # Get the Cell Value from the LandCover Raster
+            # Get the Cell Value from the ASPECT Raster
             try:
-                cellresult = arcpy.GetCellValue_management(LANDCOVER_RASTER,
+                cellresult = arcpy.GetCellValue_management(ASPECT_RASTER,
                                                            str(row[1]) + " " +
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
-                cellvalue = int(cellresult.getOutput(0))
-                #LOGGER.info(row[3])
+                cellvalue = float(cellresult.getOutput(0))
+                #LOGGER.debug(row[3])
                 # If the cell does not have a value, set a value to add to TARGET_FC
                 #if (row[3] == str(NODATA)):
                 #   row[3] = -2
 
             except Exception as err:
-                LOGGER.error(err.args[0])
+                arcpy.AddError(err.args[0])
 
+            #LOGGER.debug(cellvalue)
             row[3] = cellvalue
-            LOGGER.debug("Cell Value is " + str(row[3]))
+            LOGGER.debug("Aspect Cell Value is " + str(row[3]))
             cursor.updateRow(row)
 
     # Calculate the execution time
+    LOGGER.info("Aspect value calculation completed")
+    #print datetime.now()
     STOP_TIME = time.time()
     LOGGER.info("Total execution time in seconds = " +
-                str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
-                str(int(STOP_TIME-START_TIME)/60))
+                     str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
+                     str(int(STOP_TIME-START_TIME)/60))
+
 finally:
     # Shut down logging after script has finished running.
     #http://stackoverflow.com/questions/24816456/python-logging-wont-shutdown
