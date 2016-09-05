@@ -60,6 +60,21 @@
 
 # http://desktop.arcgis.com/en/arcmap/10.3/guide-books/python-addins/creating-an-add-in-tool.htm
 ############################################################################################
+
+
+#Calculate statistics on Fishnet cells:
+# Replace a layer/table view name with a path to a dataset (which can be a layer file) or create the layer/table view within the script
+# The following inputs are layers or table views: "DHA_Clearance"
+arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.gdb/DHA_Clearance_Statistics1", statistics_fields="SW MEAN;S MEAN;SE MEAN;W MEAN;CENTER MEAN;E MEAN;NW MEAN;N MEAN;NE MEAN", case_field="")
+
+#OBJECTID *	FREQUENCY	MEAN_SW	MEAN_S	MEAN_SE	MEAN_W	MEAN_CENTER	MEAN_E	MEAN_NW	MEAN_N	MEAN_NE
+#1	1	8	0	17	17	22	14	6	14	15
+
+#Add to Map? This shows the mean value of all the cells. Cell with highest mean value is national primary cluster.
+
+
+############################################################################################
+
 #--------------------------------------------------------------------------------------------
 
 # Are any of the tools version specific? Do we need to check for a certain version of Python or ArcMap?

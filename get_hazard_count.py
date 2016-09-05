@@ -130,9 +130,7 @@ REQUIRED_FIELD = 'SW' # Which field must we filter on and check for?
 # Use the SW field as a proxy for all nine fishnet (grid) cells
 HAZARDS_LIST = [] # Empty list that will store the feature classes to process
 HAZARDSLIST_FEATLAYER = [] # Empty list that will store the feature layers
-COUNTER = 0
-
-
+COUNTER = 0 # Global counter used for progress report
 
 ########################################################
 # Tool configuration:
@@ -196,9 +194,6 @@ templateExtent = '#'
 geometryType = 'POLYGON'
 # Don't generate an additional feature class containing fishnet labels
 labels = 'NO_LABELS'
-
-
-
 
 # Put everything in a try/finally statement, so that we can close the logger
 # even if script bombs out or we call an execution error along the line
@@ -278,7 +273,6 @@ try:
     arcpy.AddMessage("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 
-    # Hoekom doen ons hierdie een? Is dit nodig? Vir RECORD_COUNT
     arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
     arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
@@ -351,35 +345,37 @@ try:
             fishnetCounter = 0
 
             LOGGER.info("Processing the fishnet")
-             # Loop through the 9 fishnet cells and intersect with hazards FC to count hazards in each cell
+             # Loop through the 9 fishnet cells and intersect with the hazards
+             # feature classes to count all the hazards in each cell
 
             with arcpy.da.SearchCursor(FISHNET_FC, "SHAPE@") as cursor2:
                 for row2 in cursor2:
                     LOGGER.debug("Processing fishnet feature class row {0}".format(fishnetCounter))
-                    # Loop through the Hazards Feature layer list to find the total
-                    # using the locally scope variable below
+                    # Loop through the Hazards Feature layer list to find the
+                    # total using the locally scope variable below
                     TOTAL_HAZARDS = 0
                     LOGGER.info("Starting with hazards feature list processing")
                     for fc in HAZARDSLIST_FEATLAYER:
                         LOGGER.info("  Processing hazard feature class: {0}".format(fc))
-                        # Filter the HAZARDS_FC1 and HAZARDS_FC2 on the current hazard area so that we only count the hazards falling inside this hazard area
+                        # Filter the HAZARDS FC on the current hazard area so
+                        # we only count hazards falling inside this hazard area
+                        # DOES THIS PREVENT DOUBLE COUNTING IN OVERLAPPING DHA?
                         arcpy.SelectLayerByLocation_management(fc, "WITHIN", row[1],
                                                                "", "NEW_SELECTION", "")
-                        #sys.exit()
-                        #hazardbyCell = arcpy.SelectLayerByLocation_management(fc, "WITHIN", fishnetCounter[0])
-                        #LOGGER.debug(hazardbyCell)
-                        #CELL_RESULT = arcpy.GetCount_management(hazardbyCell)
+
+                        # Filter the hazards on the current fishnet polygon
                         arcpy.SelectLayerByLocation_management(fc, "WITHIN", row2[0])
                         CELL_RESULT = arcpy.GetCount_management(fc)
                         TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
                         LOGGER.info("  TOTAL_HAZARDS is: {0}".format(TOTAL_HAZARDS))
-                        # Remove the filter on the HAZARDS FC by clearing the selection
+                        # Remove the filter on the HAZARDS FC
                         arcpy.SelectLayerByAttribute_management(fc,"CLEAR_SELECTION","")
 
                     # Now we have the total hazards in this cell
                     LOGGER.debug("TOTAL_HAZARDS is now: {0}".format(TOTAL_HAZARDS))
 
-                    # Assign the hazard count to the fishnet polygon that is currently being processed.
+                    # Assign the hazard count to the fishnet polygon that is
+                    # currently being processed
                     if fishnetCounter == 0:
                        clusterDictionary['SW'] = TOTAL_HAZARDS
                     elif fishnetCounter == 1:
@@ -402,7 +398,7 @@ try:
                     # Increment counter
                     fishnetCounter += 1
 
-            # Print the cluster dictionary now that we have looped over all the cells
+            # Print the final cluster dictionary
             LOGGER.debug("clusterDictionary is: {0}".format(clusterDictionary))
 
             # Update the row with the new values
@@ -419,9 +415,8 @@ try:
             LOGGER.info("Updating the feature")
             cursor.updateRow(row)
 
-            # Delete the dictionary
+            # Prepare for the next iteration
             del clusterDictionary
-            # Remove the fishnet in preparation for the next row
             arcpy.Delete_management(FISHNET_FC)
 
     STOP_TIME = time.time()
