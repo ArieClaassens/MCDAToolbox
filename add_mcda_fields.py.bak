@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # Name:        AddMCEFields
-# Purpose:     Add the attribute fields required by the Multi-Criteria
+# Purpose:     Add the attributes fields required by the Multi-Criteria
 #              Decision Analysis processes.
 #
 # Author:      Arie Claassens
@@ -11,8 +11,8 @@
 #------------------------------------------------------------------------------
 
 """
-Add the attribute fields required for the Multi-Criteria Decision Analysis and
-cluster location processes.
+Add the attributes required for the Multi-Criteria Decision Analysis and
+primary cluster location processes.
 """
 
 # Library Imports
@@ -22,8 +22,7 @@ import time
 import arcpy
 
 # Functions and classes
-# Adapted from:
-# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -35,12 +34,7 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        #except:
-        except Exception as inst:
-            # Log the exception type  and all error messages returned
-            LOGGER.error(type(inst))
-            LOGGER.error(arcpy.GetMessages())
-
+        except:
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -52,8 +46,7 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from:
-# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
+# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
 def fieldexist(featureclass, fieldname):
     """
     Test for the existence of fieldname in featureclass.
@@ -68,12 +61,12 @@ def fieldexist(featureclass, fieldname):
 # User Input:
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
-# Variable to store the location of the feature class that will be modified
+# Define a variable to store the location of the feature class that will be
+# updated with the new attribute fields.
 TARGET_FC = arcpy.GetParameterAsText(2)
 
-arcpy.env.addOutputsToMap = False # Set this with user input?
-
-# Logging configuration - set up and inform the user
+# Tool configuration:
+# Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
 LOGFILE = unicode(LOGDIR + '\\'+ DATE_STRING +
                   '_mcdatool.log').encode('unicode-escape')
@@ -95,10 +88,11 @@ LOGGER.debug("------- START LOGGING-----------")
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
 # Put everything in a try/finally statement, so that we can close the logger
-# even if the script bombs out or we raise an execution error before the end.
-# See http://www.tutorialspoint.com/python/python_exceptions.htm
+# even if script bombs out or we call an execution error along the line
 try:
-    # Start the process by first running some sanity checks
+    # Start the process by first running the sanity checks
+    # Sanity checks:
+
     # Check if we can obtain a schema lock - adapted from
     # https://pro.arcgis.com/en/pro-app/arcpy/functions/testschemalock.htm
     if not arcpy.TestSchemaLock(TARGET_FC):
@@ -114,14 +108,18 @@ try:
                       .format(TARGET_FC))
         raise arcpy.ExecuteError
 
-    # Define an empty list to hold the lists of fields and their parameters
+    # Check if we have the required extension, otherwise stop the script.
+    #check_extension("Spatial") # base functionality
+
+    # Define an empty multi-dimensional array to hold the 21 fields and their
+    # 9 parameters
     ARRAY_FIELDS = []
 
     # Append the required fields with their parameters to the array
     # The fields are [field_name, field_type, field_precision, field_scale,
     # field_length, field_alias, field_is_nullable, field_is_required,
     # field_domain]
-    # Keep names under 64 alphanumeric and underscore characters for safety.
+    # Keep field names under 64 alphanumeric and underscore characters for safety.
     # Refer to http://desktop.arcgis.com/en/arcmap/latest/manage-data/administer-file-gdbs/file-geodatabase-size-and-name-limits.htm
     # and http://support.esri.com/technical-article/000005588
     ARRAY_FIELDS.append(["LANDCOVER", "LONG", "", "", "", "", "NULLABLE",
@@ -199,47 +197,33 @@ try:
     ARRAY_FIELDS.append(["RANKING", "TEXT", "", "", "50", "", "NULLABLE",
                          "NON_REQUIRED", ""])
 
-    LOGGER.info("Starting to add the MCDA fields.")
+    LOGGER.info("Starting the Add MCDA Fields process")
+
+    # Check if feature class is of point or polygon type, in which case we
+    # calculate the centroid inside X,Y coordinates and add them
+    # as INSIDE_X and INSIDE_Y fields to the feature class. Other
+    # shape types are not supported, so raise an error to stop the process.
+    # SEE http://pro.arcgis.com/en/pro-app/tool-reference/data-management/add-geometry-attributes.htm
+    FC_DESC = arcpy.Describe(TARGET_FC)
+    if FC_DESC.shapeType == "Polygon":
+        LOGGER.info("POLYGON feature class detected. Adding the inside \
+                    centroid X and Y coordinates.")
+        arcpy.AddGeometryAttributes_management(
+            Input_Features=TARGET_FC,
+            Geometry_Properties="CENTROID_INSIDE", Length_Unit="", Area_Unit="",
+            Coordinate_System="")
+    else:
+        LOGGER.error("Unsupported shape type detected. Please use a \
+        feature class with a POLYGON shape type.")
+        raise arcpy.ExecuteError
 
     # Test to see if the required fields already exist in the feature class
     # Loop through the array of fields and test against the field name.
     # Throw an error if a match is found.
-    if fieldexist(TARGET_FC, "INSIDE_X"):
-        LOGGER.error("The field INSIDE_X already exists.")
-        STOP_SCRIPT = "Yes"
-
-    if fieldexist(TARGET_FC, "INSIDE_Y"):
-        LOGGER.error("The field INSIDE_Y already exists.")
-        STOP_SCRIPT = "Yes"
-
     for row in ARRAY_FIELDS:
         if fieldexist(TARGET_FC, row[0]):
-            LOGGER.error("The field "+str(row[0])+" already exists.")
-            STOP_SCRIPT = "Yes"
-
-    if STOP_SCRIPT == "Yes":
-        raise arcpy.ExecuteError
-
-    # Check if feature class is of polygon type, in which case we calculate the
-    # inside centroid X,Y coordinates and add them as INSIDE_X and INSIDE_Y
-    # fields to the feature class. Other shape types are not supported, so raise
-    # an error to stop the process.
-    # SEE http://pro.arcgis.com/en/pro-app/tool-reference/data-management/add-geometry-attributes.htm
-    FC_DESC = arcpy.Describe(TARGET_FC)
-    if FC_DESC.shapeType == "Polygon":
-        try:
-            LOGGER.info("Adding the inside centroid X and Y coordinates.")
-            arcpy.AddGeometryAttributes_management(Input_Features=TARGET_FC,
-                                                   Geometry_Properties="CENTROID_INSIDE",
-                                                   Length_Unit="", Area_Unit="",
-                                                   Coordinate_System="")
-        except Exception as inst:
-            # Log the exception type  and all error messages returned
-            LOGGER.error(type(inst))
-            LOGGER.error(arcpy.GetMessages())
-    else:
-        LOGGER.error("Unsupported shape type detected.")
-        raise arcpy.ExecuteError
+            LOGGER.warn("The field "+str(row[0])+" already exists.")
+            raise arcpy.ExecuteError
 
     # Loop through the array and create the fields using the values stored
     # in the array.
@@ -260,4 +244,3 @@ finally:
     LOGGER.removeHandler(HANDLER)
     HANDLER.close()
     logging.shutdown()
-

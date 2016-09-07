@@ -48,7 +48,11 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        except:
+        #except:
+        except Exception as inst:
+            # Log the exception type and all error messages returned
+            LOGGER.error(type(inst))
+            LOGGER.error(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -258,6 +262,8 @@ try:
         if MISMATCHED:
             # Terminate the main thread
             # See https://docs.python.org/2/library/sys.html#sys.exit
+            LOGGER.warn("Spatial references do not match")
+            raise arcpy.ExecuteError
             sys.exit(0)
 
     # Adjust the fields list to include the Object ID and Shape data

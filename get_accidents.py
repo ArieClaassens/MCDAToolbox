@@ -45,7 +45,11 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        except:
+        #except:
+        except Exception as inst:
+            # Log the exception type and all error messages returned
+            LOGGER.error(type(inst))
+            LOGGER.error(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -162,8 +166,6 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
 # even if script bombs out or we call an execution error along the line
 try:

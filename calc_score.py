@@ -50,7 +50,11 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        except:
+        #except:
+        except Exception as inst:
+            # Log the exception type and all error messages returned
+            LOGGER.error(type(inst))
+            LOGGER.error(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -266,7 +270,6 @@ RIVERS_WEIGHT = int(arcpy.GetParameterAsText(12))
 SLOPE_WEIGHT = int(arcpy.GetParameterAsText(13))
 POPULATION_WEIGHT = int(arcpy.GetParameterAsText(14))
 
-#arcpy.env.overwriteOutput = True
 arcpy.env.addOutputsToMap = False # Set this with user input?
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELDS = ['LANDCOVER', 'ASPECT',

@@ -46,7 +46,11 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        except:
+        #except:
+        except Exception as inst:
+            # Log the exception type and all error messages returned
+            LOGGER.error(type(inst))
+            LOGGER.error(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:

@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        getPOI
-# Purpose:     Calculates the POI value for each feature.
+# Name:        getAccidents
+# Purpose:     Calculate the Accidents results
 #
 # Author:      Arie Claassens
 #
@@ -10,13 +10,14 @@
 #------------------------------------------------------------------------------
 
 """
-Get the count of POI (Points, Parks & Forests) within a predefined radius
-and assign a weight based on the count:
+Get the count of Accidents within a predefined radius and assign a weight
+based on the count:
 0 features within radius = 0
 1 feature within radius = 1
 2 features within radius = 2
 2+ features within radius = 3
 """
+
 
 ########################################################
 #Import libraries
@@ -44,11 +45,7 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        #except:
-        except Exception as inst:
-            # Log the exception type and all error messages returned
-            LOGGER.error(type(inst))
-            LOGGER.error(arcpy.GetMessages())
+        except:
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -113,26 +110,26 @@ def compare_list_items(checklist):
     return mismatch
 
 ########################################################
+# Global variables
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
 TARGET_FC = arcpy.GetParameterAsText(3)
-POIFC1 = arcpy.GetParameterAsText(4)
-POIFC2 = arcpy.GetParameterAsText(5)
-BUFFER_DIST = arcpy.GetParameterAsText(6)
+ACC_FC1 = arcpy.GetParameterAsText(4)
+ACC_FC2 = arcpy.GetParameterAsText(5)
+BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
 UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
-REQUIRED_FIELD = "POI" # Which field must we filter on and check for?
-POI_FEATCLASS_LIST = [] # Empty list that will store the feature classes to process
-POI_FEATLAYER_LIST = [] # Empty list that will store feature layers
-COUNTER = 0
+REQUIRED_FIELD = "ACCIDENTS" # Which field must we filter on and check for?
+ACCIDENTS_LIST = [] # Empty list that will store the feature classes to process
+ACCIDENTSLIST_FEATLAYER = [] # Empty list that will store feature layers
 # Append the Meters required for the buffer distance parameter
 BUFFER_DISTM = BUFFER_DIST + " Meters"
-
+COUNTER = 0
 
 # Define the query filter
 # Should we only update or process all records? True if selected by the user
@@ -142,6 +139,7 @@ else:
     QRY_FILTER = ""
 LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
+########################################################
 # Tool configuration:
 # Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
@@ -152,7 +150,7 @@ BACKUPCOUNT = 10
 # Change this variable to a unique identifier for each script it runs in.
 # Cannot use LOGGER.findCaller(), as we're calling from an embedded script in
 # the Python toolbox.
-LOGSTAMP = "AddPOI" # Identifies the source of the log entries
+LOGSTAMP = "AddAccidents" # Identifies the source of the log entries
 LOGGER = logging.getLogger(LOGSTAMP)
 HANDLER = ArcPyLogHandler(LOGFILE, MAXBYTES, BACKUPCOUNT)
 FORMATTER = logging.Formatter("%(asctime)s %(name)-15s %(levelname)-8s %(message)s")
@@ -184,26 +182,23 @@ try:
                          Please use the correct Hazard feature class.")
         raise arcpy.ExecuteError
 
-    ########################################################
     #Build the list with the feature classes that will be used
-    # We need at least one FC to work with, so let's check first if it has any content
-    if int(arcpy.GetCount_management(POIFC1)[0]) == 0:
-        arcpy.AddError("{0} has no features. Please use a feature class that \
-                       contains data.".format(POIFC1))
+    # We need at least one FC to work with; check first if it has any content
+    if int(arcpy.GetCount_management(ACC_FC1)[0]) == 0:
+        LOGGER.error("{0} has no features. Please use a feature class that \
+                       contains data.".format(ACC_FC1))
         raise arcpy.ExecuteError
     else:
-        POI_FEATCLASS_LIST.append(POIFC1)
+        ACCIDENTS_LIST.append(ACC_FC1)
 
     #First check if FC2 was passed in to the script before we check if it is empty
-    if len(POIFC2) > 1:
-        if int(arcpy.GetCount_management(POIFC2)[0]) == 0:
-            arcpy.AddError("{0} has no features. Please use a feature class that \
-                           contains data.".format(POIFC2))
+    if len(ACC_FC2) > 1:
+        if int(arcpy.GetCount_management(ACC_FC2)[0]) == 0:
+            LOGGER.error("{0} has no features. Please use a feature class that \
+                           contains data.".format(ACC_FC2))
             raise arcpy.ExecuteError
         else:
-            POI_FEATCLASS_LIST.append(POIFC2)
-
-
+            ACCIDENTS_LIST.append(ACC_FC2)
 
     # Check if we have the required extension, otherwise stop the script.
     # Get Cell value is a standard tool in all ArcMap license levels.
@@ -216,9 +211,9 @@ try:
         LIST_FC = [] # Emtpy list to store FC
         # Add spatial references of all items
         LIST_FC.append(get_projection(TARGET_FC))
-        LIST_FC.append(get_projection(POIFC1))
-        if len(POIFC2) > 1:
-            LIST_FC.append(get_projection(POIFC2))
+        LIST_FC.append(get_projection(ACC_FC1))
+        if len(ACC_FC2) > 1:
+            LIST_FC.append(get_projection(ACC_FC2))
         LOGGER.debug("The list of spatial references to check is:")
         LOGGER.debug(LIST_FC)
         LOGGER.info("Comparing spatial references of the data sets")
@@ -244,55 +239,58 @@ try:
     feature class with a POINT or POLYGON shape type")
         raise arcpy.ExecuteError
 
-
-    #############################################################################
-    LOGGER.info("Starting with POI Proximity Analysis")
+#############################################################################
+    arcpy.AddMessage("Starting with Accidents Proximity Analysis")
     START_TIME = time.time()
 
     arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", FILTER_QUERY)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-    LOGGER.info("Total number of features: " + str(RECORD_COUNT))
+    #arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
 
-    #Create feature layers out of POI FC
+    #Create feature layers out of Infrastructure FC
     LIST_COUNT = 0
-    for item in POI_FEATCLASS_LIST:
+    for item in ACCIDENTS_LIST:
         LIST_COUNT += 1
+        # Dynamically generate a name for the Feature layer
         itemFlayerName = "Flayer_" + str(LIST_COUNT)
-        #LOGGER.info(itemFlayerName)
+        #arcpy.AddMessage("Adding Feature Layer: " + itemFlayerName)
         arcpy.MakeFeatureLayer_management(item, itemFlayerName)
-        POI_FEATLAYER_LIST.append(itemFlayerName)
+        ACCIDENTSLIST_FEATLAYER.append(itemFlayerName)
+        #arcpy.AddMessage(listInfraFeatLayer)
 
-    LOGGER.info("\nStarting with the Hazards processing....")
+    arcpy.AddMessage("Starting with the Features' processing....")
 
-    with arcpy.da.UpdateCursor(TARGET_FC, ['OBJECTID', 'POI', 'POI_BUFFER_DIST'],
+    with arcpy.da.UpdateCursor(TARGET_FC, ['OBJECTID', 'ACCIDENTS',
+                                           'ACCIDENTS_BUFFER_DIST'],
                                FILTER_QUERY) as cursor:
         for row in cursor:
-            #Loop through Target FC
+            #Loop through Hazard FC
             COUNTER += 1
             # https://docs.python.org/2.7/library/decimal.html
-            pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) *100
-            LOGGER.info("Processing OID " + str(row[0]) +
-                             ", with POI grading of "+ str(row[1]) + ". Feature " +
-                             str(COUNTER) + " of " + str(RECORD_COUNT) +
-                             " or " + str(pctDone) + " %")
+            pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) * 100
+            arcpy.AddMessage("Processing OID " + str(row[0]) +
+                             ", with ACCIDENTS grading of " + str(row[1]) +
+                             ". Feature " + str(COUNTER) + " of " +
+                             str(RECORD_COUNT) + " or " + str(pctDone) + " %")
 
             # Now loop over items in Infrastructure list and tally up the total
             # after parsing all of them
             # Select the current feature from original Hazard FC
-            arcpy.SelectLayerByAttribute_management("inputHazard", "NEW_SELECTION",
+            arcpy.SelectLayerByAttribute_management("inputHazard",
+                                                    "NEW_SELECTION",
                                                     "OBJECTID = " + str(row[0]))
 
             ###############################
             # Initialise the COUNTER, with its local scope, to zero
-            totPOI = 0
+            totAccidents = 0
             ##############################
-            # Now loop through POI feature layers and get the intersection
-            for fc in POI_FEATLAYER_LIST:
-                #LOGGER.info("Now processing Feature Layer : " + fc)
+            # Now loop through INFRASTRUCTURE feature layers and get the intersection
+            for fc in ACCIDENTSLIST_FEATLAYER:
+                #arcpy.AddMessage("Now processing Feature Layer : " + fc)
                 # Takes longer due to the buffering done as part of each query.
                 # But faster than clipping source and using that.
                 # Less risk of losing or modding data too.
-                outputPOI = arcpy.SelectLayerByLocation_management(fc,
+                outputAcc = arcpy.SelectLayerByLocation_management(fc,
                                                                    "WITHIN_A_DISTANCE_GEODESIC",
                                                                    "inputHazard",
                                                                    BUFFER_DISTM, "")
@@ -300,43 +298,43 @@ try:
                 # The RECORD_COUNT2 method produces way larger results, e.g. 13
                 # versus the 1 reported by looping through the rows.
                 #RECORD_COUNT2 = int(arcpy.GetCount_management(outputInfrastructure).getOutput(0))
-                #LOGGER.info("RECORD_COUNT2 is: " +  str(RECORD_COUNT2))
-                for row2 in outputPOI:
-                    # LOGGER.info OIDs of selected features
-                    #LOGGER.info(row2.getSelectionSet())
-                    #LOGGER.info("\tRunning the row2 inside loop")
-                    totPOI += 1
+                #arcpy.AddMessage("RECORD_COUNT2 is: " +  str(RECORD_COUNT2))
+                for row2 in outputAcc:
+                    # arcpy.AddMessage OIDs of selected features
+                    #arcpy.AddMessage(row2.getSelectionSet())
+                    #arcpy.AddMessage("\tRunning the row2 inside loop")
+                    totAccidents += 1
                     # http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy-data-access/featureclasstonumpyarray.htm
                     #arr = arcpy.da.FeatureClassToNumPyArray(row2, "OID@",skip_nulls=True) # Should we do the skip_nulls?
-                    #LOGGER.info("Total POI in radius: " + str(arr["OID@"].sum()))
-                    #totPOI = arr["grid_code"].sum()
+                    #arcpy.AddMessage("Total Accidents in radius: " + str(arr["OID@"].sum()))
+                    #totPop = arr["grid_code"].sum()
 
-                #LOGGER.info("ROW totPOI is: " + str(totPOI))
+                #arcpy.AddMessage("ROW totAccidents is: " + str(totAccidents))
 
             # Update the row with the population sum
-            #LOGGER.info("totPOI is: "+ str(totPOI))
+            #arcpy.AddMessage("totAccidents is: "+ str(totAccidents))
             # Cast to integer to ensure we deal with integer values
-            totPOI = int(totPOI)
+            totAccidents = int(totAccidents)
 
-            # Calculate the grading. A case statement would have been handy.
-            if totPOI == 0:
-                gradePOI = 0
-            elif totPOI == 1:
-                gradePOI = 1
-            elif totPOI == 2:
-                gradePOI = 2
+            # Calculate the grading. A case statement would have worked nicely. Thanks Python!
+            if totAccidents == 0:
+                gradeAccidents = 0
+            elif totAccidents == 1:
+                gradeAccidents = 1
+            elif totAccidents == 2:
+                gradeAccidents = 2
             else:
-                gradePOI = 3
+                gradeAccidents = 3
 
-            #LOGGER.info("POI grading: " + str(gradePOI))
-            # Assign the new value to the POI field
-            row[1] = gradePOI
-            # Assign the buffer distance to the POI buffer distance field
+            arcpy.AddMessage("Accidents grading: " + str(gradeAccidents))
+            # Assign the new value to the Accidents field
+            row[1] = gradeAccidents
+            # Assign the buffer distance to the Accidents buffer distance field
             row[2] = BUFFER_DIST
             cursor.updateRow(row)
 
     STOP_TIME = time.time()
-    LOGGER.info("Total execution time in seconds = " +
+    arcpy.AddMessage("Total execution time in seconds = " +
                      str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
                      str(int(STOP_TIME-START_TIME)/60))
 
@@ -347,3 +345,4 @@ finally:
     LOGGER.removeHandler(HANDLER)
     HANDLER.close()
     logging.shutdown()
+

@@ -43,54 +43,58 @@ FileName=$[Project-Path]get_aspect.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_infrastructure.py
+FileName=$[Project-Path]get_hazard_count.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_keyfeatures.py
+FileName=$[Project-Path]get_infrastructure.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_landcover.py
+FileName=$[Project-Path]get_keyfeatures.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_poi.py
+FileName=$[Project-Path]get_landcover.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node11]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_pop_impact.py
+FileName=$[Project-Path]get_poi.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node12]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_primary_cluster_location.py
+FileName=$[Project-Path]get_pop_impact.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node13]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_rivers.py
+FileName=$[Project-Path]get_primary_cluster_location.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node14]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_slope.py
+FileName=$[Project-Path]get_rivers.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node15]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]main.py
+FileName=$[Project-Path]get_slope.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node16]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]notes.py
+FileName=$[Project-Path]main.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node17]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]tests.py
+FileName=$[Project-Path]notes.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node18]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]tests.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node19]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]testStuff.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
-Count=19
+Count=20
 
 [Project\ChildNodes\Node0\ChildNodes]
 Count=1
