@@ -56,9 +56,8 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 # http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -95,7 +94,7 @@ LOGGER.debug("------- START LOGGING-----------")
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
 # Put everything in a try/finally statement, so that we can close the logger
-# even if the script bombs out or we raise an execution error before the end.
+# even if the script bombs out or we raise an execution error along the line
 # See http://www.tutorialspoint.com/python/python_exceptions.htm
 try:
     # Start the process by first running some sanity checks

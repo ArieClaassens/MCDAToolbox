@@ -14,8 +14,6 @@ Calculates the Aspect value for the Hazards Feature Class using the
 Aspect raster with the Get Cell Value Spatial Analysis Tool
 """
 
-# If it is a polygon, we need to find the centroid and use that for the aspect
-########################################################
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
 import logging
@@ -27,7 +25,6 @@ from decimal import Decimal, getcontext #For progress COUNTER
 #import collections
 import arcpy
 
-########################################################
 # Functions and classes
 # Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
@@ -57,12 +54,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -70,12 +67,11 @@ def fieldexist(featureclass, fieldname):
 
 def get_projection(featureclass):
     """
-    Find and return the spatial reference name of a feature class.
+    Find and return the full spatial reference of a feature class
     """
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
     # discrepancies with differing central meridians, for example.
-    #proj = description.SpatialReference.Name
     proj = description.SpatialReference.exporttostring()
     return proj
 
@@ -98,18 +94,18 @@ def compare_list_items(checklist):
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
-                LOGGER.warning("The check and current item mismatch.")
+                LOGGER.debug("The check and current item mismatch")
                 break # Break out of the for loop. no further testing needed
 
     LOGGER.info("Is there a spatial reference mismatch? " + str(mismatch))
     if mismatch:
-        LOGGER.critical("Spatial reference mismatch between the feature classes.")
+        LOGGER.critical("Spatial reference mismatch detected.")
     else:
         LOGGER.info("Spatial references of all the feature classes match.")
 
     return mismatch
 
-########################################################
+
 # Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -154,9 +150,8 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
 
@@ -180,9 +175,6 @@ try:
                       already contains the required features and attributes." \
                       .format(ASPECT_RASTER))
         raise arcpy.ExecuteError
-
-    # Check if we have the required extension, otherwise stop the script.
-    # Get Cell value is a standard tool in all ArcMap license levels.
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.

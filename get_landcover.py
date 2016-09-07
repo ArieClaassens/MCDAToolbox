@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # Name:        getLandCover
-# Purpose:     Calculates the Land Cover value for each feature.
+# Purpose:     Calculates the Land Cover value for each hazard area
 #
 # Author:      Arie Claassens
 #
@@ -10,26 +10,24 @@
 #------------------------------------------------------------------------------
 
 """
-Calculates the LandCover value for the Hazards Feature Class using the
-LandCover raster with the Get Cell Value Spatial Analysis Tool
+Calculates the LandCover value for the Hazard Area Feature Class using the
+LandCover raster with the Get Cell Value Spatial Analysis Tool, based on the
+inside centroid X and Y coordinates
 """
 
-# If it is a polygon, we need to find the centroid and use that for the aspect
-########################################################
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
+import sys
 import logging
 import logging.handlers
-#from datetime import datetime, date
-import time # For timing purposes
-from decimal import Decimal, getcontext #For progress COUNTER
+import time
+from decimal import Decimal, getcontext #For the progress counter
 # https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
 #import collections
 import arcpy
 
-########################################################
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from:
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -57,12 +55,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -70,12 +68,11 @@ def fieldexist(featureclass, fieldname):
 
 def get_projection(featureclass):
     """
-    Find and return the spatial reference name of a feature class.
+    Find and return the full spatial reference of a feature class
     """
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
     # discrepancies with differing central meridians, for example.
-    #proj = description.SpatialReference.Name
     proj = description.SpatialReference.exporttostring()
     return proj
 
@@ -98,18 +95,18 @@ def compare_list_items(checklist):
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
-                LOGGER.warning("The check and current item mismatch.")
+                LOGGER.debug("The check and current item mismatch")
                 break # Break out of the for loop. no further testing needed
 
     LOGGER.info("Is there a spatial reference mismatch? " + str(mismatch))
     if mismatch:
-        LOGGER.critical("Spatial reference mismatch between the feature classes.")
+        LOGGER.critical("Spatial reference mismatch detected.")
     else:
         LOGGER.info("Spatial references of all the feature classes match.")
 
     return mismatch
 
-########################################################
+
 # Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -154,9 +151,8 @@ else:
     QRY_FILTER = ""
 LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
 
@@ -173,16 +169,18 @@ try:
                          Please use the correct Hazard feature class.")
         raise arcpy.ExecuteError
 
-    # Check if the raster layer has any features before we start
-    if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
+    # Check if the raster layer has any NoData before we start
+    # Adapted from https://geonet.esri.com/message/487616#comment-520588
+    # determine if raster has no data values
+    if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
-        LOGGER.error("{0} has no features. Please use a raster layer that \
-                      already contains the required features and attributes." \
-                      .format(LANDCOVER_RASTER))
-        raise arcpy.ExecuteError
-
-    # Check if we have the required extension, otherwise stop the script.
-    # Get Cell value is a standard tool in all ArcMap license levels.
+        if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
+           getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in {0}".format(LANDCOVER_RASTER))
+            LOGGER.error("Please use a raster layer that contains data.")
+            raise arcpy.ExecuteError
+    else:
+        LOGGER.debug("The raster is without NoData")
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
@@ -214,15 +212,11 @@ try:
     # the fields list to use the inside centroid X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
     FC_DESC = arcpy.Describe(TARGET_FC)
-    if FC_DESC.shapeType == "Point":
-        LOGGER.info("POINT feature class detected. Proceeding.")
-        FIELDLIST = ['OBJECTID', 'SHAPE@X', 'SHAPE@Y', REQUIRED_FIELD]
-    elif FC_DESC.shapeType == "Polygon":
+    if FC_DESC.shapeType == "Polygon":
         LOGGER.info("POLYGON feature class detected. Proceeding.")
         FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
     else:
-        LOGGER.error("Unsupported shape type detected. Please use a \
-    feature class with a POINT or POLYGON shape type")
+        LOGGER.error("Unsupported shape type detected.")
         raise arcpy.ExecuteError
 
     LOGGER.info("Starting the Land Cover calculations")

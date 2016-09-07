@@ -19,7 +19,6 @@ located within a predefined buffer distance from the hazard point or area.
 #http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#/Extract_by_Mask/009z0000002n000000/
 #https://blogs.esri.com/esri/arcgis/2013/05/20/are-you-sure-intersect-is-the-right-tool-for-the-job/ - Nope it isn't
 
-########################################################
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
 import logging
@@ -31,9 +30,9 @@ from decimal import Decimal, getcontext #For progress COUNTER
 #import collections
 import arcpy
 
-########################################################
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from:
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -61,12 +60,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -74,12 +73,11 @@ def fieldexist(featureclass, fieldname):
 
 def get_projection(featureclass):
     """
-    Find and return the spatial reference name of a feature class.
+    Find and return the full spatial reference of a feature class
     """
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
     # discrepancies with differing central meridians, for example.
-    #proj = description.SpatialReference.Name
     proj = description.SpatialReference.exporttostring()
     return proj
 
@@ -102,18 +100,17 @@ def compare_list_items(checklist):
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
-                LOGGER.warning("The check and current item mismatch.")
+                LOGGER.debug("The check and current item mismatch")
                 break # Break out of the for loop. no further testing needed
 
     LOGGER.info("Is there a spatial reference mismatch? " + str(mismatch))
     if mismatch:
-        LOGGER.critical("Spatial reference mismatch between the feature classes.")
+        LOGGER.critical("Spatial reference mismatch detected.")
     else:
         LOGGER.info("Spatial references of all the feature classes match.")
 
     return mismatch
 
-########################################################
 # Global variables
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -164,9 +161,8 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
 
@@ -188,9 +184,6 @@ try:
         arcpy.AddError("{0} has no features. Please use a feature class that \
                        contains data.".format(POP_FC1))
         raise arcpy.ExecuteError
-
-    # Check if we have the required extension, otherwise stop the script.
-    # Get Cell value is a standard tool in all ArcMap license levels.
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
@@ -229,7 +222,6 @@ try:
     LOGGER.info("Starting the Population Impact calculations")
     START_TIME = time.time()
 
-    #####################################
     arcpy.MakeFeatureLayer_management(POP_FC1, "inputPop", FILTER_QUERY)
 
     arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", FILTER_QUERY)

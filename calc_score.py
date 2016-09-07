@@ -24,7 +24,7 @@ by the user to each factor.
 # Copy SOURCE_FC to TARGET_FC and run calculations on TARGET_FC, so we can repeat
 # the process with new values, keeping the SOURCE_FC intact.
 
-########################################################
+
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
 import logging
@@ -36,9 +36,10 @@ from decimal import Decimal, getcontext #For progress COUNTER
 #import collections
 import arcpy
 
-########################################################
+
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from:
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -66,12 +67,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -250,7 +251,7 @@ def sdss_priority_calc(score):
         sdss_priority = "High"
     return sdss_priority
 
-########################################################
+
 # Global variables
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -306,9 +307,8 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
 
@@ -338,15 +338,12 @@ try:
                              Please use the correct Hazard feature class.")
             raise arcpy.ExecuteError
 
-
-    ########################################################
     # We need data to work with, so let's check first if it has any content
     if int(arcpy.GetCount_management(SOURCE_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class \
                        that contains data.".format(SOURCE_FC))
         raise arcpy.ExecuteError
 
-    ############################################################################
     LOGGER.info("Starting with the SDSS Rating Analysis")
     START_TIME = time.time()
 

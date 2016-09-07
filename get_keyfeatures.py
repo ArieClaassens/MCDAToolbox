@@ -18,7 +18,6 @@ radius and assign a weight based on the count:
 2+ features within radius = 3
 """
 
-########################################################
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
 import logging
@@ -30,9 +29,9 @@ from decimal import Decimal, getcontext #For progress COUNTER
 #import collections
 import arcpy
 
-########################################################
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from:
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -60,12 +59,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -73,12 +72,11 @@ def fieldexist(featureclass, fieldname):
 
 def get_projection(featureclass):
     """
-    Find and return the spatial reference name of a feature class.
+    Find and return the full spatial reference of a feature class
     """
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
     # discrepancies with differing central meridians, for example.
-    #proj = description.SpatialReference.Name
     proj = description.SpatialReference.exporttostring()
     return proj
 
@@ -101,18 +99,17 @@ def compare_list_items(checklist):
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
-                LOGGER.warning("The check and current item mismatch.")
+                LOGGER.debug("The check and current item mismatch")
                 break # Break out of the for loop. no further testing needed
 
     LOGGER.info("Is there a spatial reference mismatch? " + str(mismatch))
     if mismatch:
-        LOGGER.critical("Spatial reference mismatch between the feature classes.")
+        LOGGER.critical("Spatial reference mismatch detected.")
     else:
         LOGGER.info("Spatial references of all the feature classes match.")
 
     return mismatch
 
-########################################################
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
@@ -122,7 +119,6 @@ KEYFEATURES_FC1 = arcpy.GetParameterAsText(4)
 KEYFEATURES_FC2 = arcpy.GetParameterAsText(5)
 BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
 UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
-
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
@@ -166,9 +162,8 @@ LOGGER.debug("------- START LOGGING-----------")
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
 
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
 
@@ -202,9 +197,6 @@ try:
             raise arcpy.ExecuteError
         else:
             KEYFEATURECLASS_LIST.append(KEYFEATURES_FC2)
-
-    # Check if we have the required extension, otherwise stop the script.
-    # Get Cell value is a standard tool in all ArcMap license levels.
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
@@ -245,7 +237,6 @@ try:
     LOGGER.info("Starting the Key Features impact calculations")
     START_TIME = time.time()
 
-#############################################################################
     arcpy.AddMessage("Starting with Key Features Proximity Analysis")
     START_TIME = time.time()
 
@@ -283,10 +274,8 @@ try:
             arcpy.SelectLayerByAttribute_management("inputHazard", "NEW_SELECTION",
                                                     "OBJECTID = " + str(row[0]))
 
-            ###############################
             # Initialise the COUNTER, with its local scope, to zero
             countKeyFeat = 0
-            ##############################
             # Now loop through KEYFEATURES feature layers and get the intersection
             for fc in KEYFEATURELAYER_LIST:
                 #arcpy.AddMessage("Now processing Feature Layer : " + fc)

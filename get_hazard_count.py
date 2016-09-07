@@ -20,8 +20,6 @@ of the nine polygons, which then represent the SW, S, SE, W, CENTER, E, NW, N
 and NE positions on the polygon.
 """
 
-
-########################################################
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
 import logging
@@ -33,10 +31,9 @@ from decimal import Decimal, getcontext #For progress COUNTER
 import arcpy
 from arcpy import env
 
-
-########################################################
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from:
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -64,12 +61,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -77,7 +74,7 @@ def fieldexist(featureclass, fieldname):
 
 def get_projection(featureclass):
     """
-    Find and return the spatial reference name of a feature class.
+    Find and return the full spatial reference of a feature class
     """
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
@@ -104,18 +101,17 @@ def compare_list_items(checklist):
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
-                LOGGER.warning("The check and current item mismatch.")
+                LOGGER.debug("The check and current item mismatch")
                 break # Break out of the for loop. no further testing needed
 
     LOGGER.info("Is there a spatial reference mismatch? " + str(mismatch))
     if mismatch:
-        LOGGER.critical("Spatial reference mismatch between the feature classes.")
+        LOGGER.critical("Spatial reference mismatch detected.")
     else:
         LOGGER.info("Spatial references of all the feature classes match.")
 
     return mismatch
 
-########################################################
 # Global variables
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -136,10 +132,7 @@ HAZARDS_LIST = [] # Empty list that will store the feature classes to process
 HAZARDSLIST_FEATLAYER = [] # Empty list that will store the feature layers
 COUNTER = 0 # Global counter used for progress report
 
-########################################################
 # Tool configuration:
-#########################################################
-
 # Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
 LOGFILE = unicode(LOGDIR + '\\'+ DATE_STRING +
@@ -200,7 +193,7 @@ geometryType = 'POLYGON'
 labels = 'NO_LABELS'
 
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
 
@@ -240,9 +233,6 @@ try:
         else:
             HAZARDS_LIST.append(HAZARD_FC2)
 
-    # Check if we have the required extension, otherwise stop the script.
-    # XXXX XXXXX is a standard tool in all ArcMap license levels.
-
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
     LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
@@ -275,7 +265,6 @@ try:
     FIELDLIST = REQUIRED_FIELDS
     LOGGER.info(FIELDLIST)
 
-#############################################################################
     arcpy.AddMessage("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 

@@ -5,6 +5,7 @@
 # Toolbox tools descriptions: http://resources.arcgis.com/en/help/main/10.1/index.html#/A_quick_tour_of_documenting_tools_and_toolboxes/001500000014000000/
 # Look at the Scripting explanation section for each parameter!!!!
 
+# What is up with Rasters and NoData?
 
 # OpenData API
 # http://anothergisblog.blogspot.com/2016/01/opendata-added-to-arcrest.html

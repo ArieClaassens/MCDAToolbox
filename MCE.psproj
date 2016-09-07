@@ -17,6 +17,13 @@ Name=Scripts
 ClassName=TProjectFolderNode
 Name=WIP
 
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]WIP\raster_checks.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
+Count=1
+
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]add_mcda_fields.py

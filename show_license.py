@@ -13,7 +13,6 @@
 Displays the MCDA Toolbox license and logs it to the log file.
 """
 
-########################################################
 #Import libraries
 import sys # required for the sys.exit() call to halt the script
 import logging
@@ -25,9 +24,9 @@ from decimal import Decimal, getcontext #For progress COUNTER
 #import collections
 import arcpy
 
-########################################################
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -55,7 +54,6 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-########################################################
 # Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -83,9 +81,8 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-###############################################################################
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     LOGGER.info("GNU GENERAL PUBLIC LICENSE ")
     LOGGER.info("                       Version 3, 29 June 2007 ")

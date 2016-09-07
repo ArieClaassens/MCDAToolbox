@@ -16,7 +16,7 @@ import arcpy
 #from arcpy import env
 #from arcpy.sa import *
 #from arcpy.da import *
-################################################################################
+
 # Global variables
 arcpy.env.overwriteOutput = True
 arcpy.env.addOutputsToMap = False
@@ -43,7 +43,8 @@ POP_CLIPPED_FC_TEMP = SCRATCH_FGDB+"\PopMap15AdjPoints_Clip"
 CLEANUP_STEP = 0
 
 
-####################################################################################
+# Put everything in a try/finally statement, so that we can close the logger
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Create Hazard Buffer FC and store in Temp File GDB on fastest drive (SSD)
     # Buffer distance is given in meters, which changes the method to Geodesic.
