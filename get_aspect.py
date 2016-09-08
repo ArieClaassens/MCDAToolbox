@@ -11,15 +11,14 @@
 
 """
 Calculates the Aspect value for the Hazards Feature Class using the
-Aspect raster with the Get Cell Value Spatial Analysis Tool
+aspect raster dataset with the Get Cell Value Spatial Analysis Tool
 """
 
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
+import sys
 import logging
 import logging.handlers
-#from datetime import datetime, date
-import time # For timing purposes
+import time
 from decimal import Decimal, getcontext #For progress COUNTER
 # https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
 #import collections
@@ -105,7 +104,6 @@ def compare_list_items(checklist):
 
     return mismatch
 
-
 # Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -119,14 +117,6 @@ UPDATE_ONLY = arcpy.GetParameterAsText(5) # Boolean result received as text
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELD = "ASPECT" # Which field must we filter on and check for?
-
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Tool configuration:
 # Set up the logging parameters and inform the user
@@ -150,6 +140,14 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
+
 # Put everything in a try/finally statement, so that we can close the logger
 # even if the script bombs out or we raise an execution error along the line
 try:
@@ -168,13 +166,18 @@ try:
                          Please use the correct Hazard feature class.")
         raise arcpy.ExecuteError
 
-    # Check if the raster layer has any features before we start
-    if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ALLNODATA").
+    # Check if the raster layer has any NoData before we start
+    # Adapted from https://geonet.esri.com/message/487616#comment-520588
+    # determine if raster has no data values
+    if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
-        LOGGER.error("{0} has no features. Please use a raster layer that \
-                      already contains the required features and attributes." \
-                      .format(ASPECT_RASTER))
-        raise arcpy.ExecuteError
+        if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ALLNODATA").
+           getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in {0}".format(ASPECT_RASTER))
+            LOGGER.error("Please use a raster layer that contains data.")
+            raise arcpy.ExecuteError
+    else:
+        LOGGER.debug("The raster is without NoData")
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
@@ -201,49 +204,40 @@ try:
     NODATA = RASTER_OBJECT.noDataValue
     LOGGER.debug("NODATA is: "+str(NODATA))
 
-
-    # Determine if we are working with a POINT or POLYGON shape type and adjust
-    # the fields list to use the inside centroid X and Y fields added in the
+    # Determine if we are working with a POLYGON shape type and adjust
+    # the fields list to use the centroid inside X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
     FC_DESC = arcpy.Describe(TARGET_FC)
-    if FC_DESC.shapeType == "Point":
-        LOGGER.info("POINT feature class detected. Proceeding.")
-        FIELDLIST = ['OBJECTID', 'SHAPE@X', 'SHAPE@Y', REQUIRED_FIELD]
-    elif FC_DESC.shapeType == "Polygon":
+    if FC_DESC.shapeType == "Polygon":
         LOGGER.info("POLYGON feature class detected. Proceeding.")
         FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
+        LOGGER.debug("")
     else:
-        LOGGER.error("Unsupported shape type detected. Please use a \
-    feature class with a POINT or POLYGON shape type")
+        LOGGER.error("Unsupported shape type detected")
         raise arcpy.ExecuteError
 
     LOGGER.info("Starting the Aspect calculations")
     START_TIME = time.time()
 
-    # Find a better way of calculating the total number of rows to be updated
-    #COUNT_RECORDS = collections.Counter(row[0] for row in
-    #                                    arcpy.da.SearchCursor(TARGET_FC, "OBJECTID",
-    #                                                          QRY_FILTER))
-
-    # See https://docs.python.org/2.7/library/collections.html#collections.COUNTER
-    #COUNT_RECORDS = sum(COUNT_RECORDS.values())
+    # Get the total number of records to process
+    # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
     COUNT_RECORDS = 0
     LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-    with arcpy.da.SearchCursor(TARGET_FC, ["OBJECTID"], QRY_FILTER) as countcursor:
-        for row in countcursor:
-            COUNT_RECORDS += 1
-            LOGGER.debug("COUNT_RECORDS is now: " + str(COUNT_RECORDS))
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+    COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+    # Destroy the temporary table
+    arcpy.Delete_management("tableViewHazards")
 
+    LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
-    LOGGER.debug("COUNT_RECORDS END: " + str(COUNT_RECORDS))
-    # What is the purpose of this test? Duplicated?
     if COUNT_RECORDS == 0:
-        arcpy.AddError("The Hazards FC does not contain any features to process.")
+        LOGGER.error("The feature class does not contain any features.")
         raise arcpy.ExecuteError
 
     COUNTER = 0
 
-    with arcpy.da.UpdateCursor(TARGET_FC, FIELD_LIST, QRY_FILTER) as cursor:
+    with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
         for row in cursor:
             COUNTER += 1
             # https://docs.python.org/3/library/decimal.html
@@ -254,26 +248,24 @@ try:
                              str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
             # Print the coordinate tuple
             LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
-            # Set a default value to cater for NoData results
+            # Set an initial default value
+            LOGGER.debug("Setting default value of -2 before row is processed")
             cellvalue = -2
-            # Get the Cell Value from the ASPECT Raster
+            # Get the Cell Value from the Aspect Raster
             try:
                 cellresult = arcpy.GetCellValue_management(ASPECT_RASTER,
                                                            str(row[1]) + " " +
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = float(cellresult.getOutput(0))
-                #LOGGER.debug(row[3])
-                # If the cell does not have a value, set a value to add to TARGET_FC
-                #if (row[3] == str(NODATA)):
-                #   row[3] = -2
+                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
 
             except Exception as err:
                 arcpy.AddError(err.args[0])
 
             #LOGGER.debug(cellvalue)
             row[3] = cellvalue
-            LOGGER.debug("Aspect Cell Value is " + str(row[3]))
+            LOGGER.debug("The aspect value is now: {0}".format(row[3]))
             cursor.updateRow(row)
 
     # Calculate the execution time

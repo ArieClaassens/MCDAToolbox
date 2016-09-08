@@ -106,7 +106,6 @@ def compare_list_items(checklist):
 
     return mismatch
 
-
 # Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -222,25 +221,20 @@ try:
     LOGGER.info("Starting the Land Cover calculations")
     START_TIME = time.time()
 
-    # Get the total number of records - how long to create a feature layer, just
-    # so that we can count the records? Is there a better way?
+    # Get the total number of records to process
     # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
     COUNT_RECORDS = 0
     LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-    #arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
-    #arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
-    #COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+    COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
     # Destroy the temporary table
-    #arcpy.Delete_management("tableViewHazards")
-    with arcpy.da.SearchCursor(TARGET_FC, ["OBJECTID"], QRY_FILTER) as countcursor:
-        for row in countcursor:
-            COUNT_RECORDS += 1
-            LOGGER.debug("COUNT_RECORDS is now: " + str(COUNT_RECORDS))
+    arcpy.Delete_management("tableViewHazards")
 
     LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
     if COUNT_RECORDS == 0:
-        LOGGER.error("The Hazards FC does not contain any features to process.")
+        LOGGER.error("The feature class does not contain any features.")
         raise arcpy.ExecuteError
 
     COUNTER = 0
@@ -255,8 +249,9 @@ try:
                         ". Feature " + str(COUNTER) + " of " +
                         str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
             # Print the coordinate tuple
-            #print(str(row[1]) + " " + str(row[2]))
-            # Set a default value to cater for NoData returned by GetCellValue
+            LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
+            # Set an initial default value
+            LOGGER.debug("Setting default value of -2 before row is processed")
             cellvalue = -2
             # Get the Cell Value from the LandCover Raster
             try:
@@ -265,16 +260,13 @@ try:
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = int(cellresult.getOutput(0))
-                #LOGGER.info(row[3])
-                # If the cell does not have a value, set a value to add to TARGET_FC
-                #if (row[3] == str(NODATA)):
-                #   row[3] = -2
+                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
 
             except Exception as err:
                 LOGGER.error(err.args[0])
 
             row[3] = cellvalue
-            LOGGER.debug("Cell Value is " + str(row[3]))
+            LOGGER.debug("The land cover value is now: {0}".format(row[3]))
             cursor.updateRow(row)
 
     # Calculate the execution time
