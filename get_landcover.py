@@ -21,8 +21,6 @@ import logging
 import logging.handlers
 import time
 from decimal import Decimal, getcontext #For the progress counter
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
 import arcpy
 
 # Functions and classes
@@ -170,7 +168,6 @@ try:
 
     # Check if the raster layer has any NoData before we start
     # Adapted from https://geonet.esri.com/message/487616#comment-520588
-    # determine if raster has no data values
     if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
         if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
@@ -200,13 +197,6 @@ try:
             # See https://docs.python.org/2/library/sys.html#sys.exit
             sys.exit(0)
 
-    # Identify NoData value for the Raster.
-    # WHAT DO WE DO WITH IT? SUBSTITUE A USER-SUPPLIED VALUE?!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # See http://gis.stackexchange.com/questions/111449/how-to-access-raster-nodata-value
-    RASTER_OBJ = arcpy.Raster(LANDCOVER_RASTER)
-    NODATA = RASTER_OBJ.noDataValue
-    LOGGER.debug("NODATA is: "+str(NODATA))
-
     # Determine if we are working with a POINT or POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
@@ -230,7 +220,6 @@ try:
     COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
     # Destroy the temporary table
     arcpy.Delete_management("tableViewHazards")
-
     LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
     if COUNT_RECORDS == 0:
@@ -251,7 +240,7 @@ try:
             # Print the coordinate tuple
             LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
             # Set an initial default value
-            LOGGER.debug("Setting default value of -2 before row is processed")
+            LOGGER.debug("Setting intial default value of -2")
             cellvalue = -2
             # Get the Cell Value from the LandCover Raster
             try:

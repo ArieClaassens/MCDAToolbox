@@ -20,8 +20,6 @@ import logging
 import logging.handlers
 import time
 from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
 import arcpy
 
 # Functions and classes
@@ -168,7 +166,6 @@ try:
 
     # Check if the raster layer has any NoData before we start
     # Adapted from https://geonet.esri.com/message/487616#comment-520588
-    # determine if raster has no data values
     if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
         if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ALLNODATA").
@@ -198,12 +195,6 @@ try:
             # See https://docs.python.org/2/library/sys.html#sys.exit
             sys.exit(0)
 
-    # Identify NoData value for the Raster
-    # See http://gis.stackexchange.com/questions/111449/how-to-access-raster-nodata-value
-    RASTER_OBJECT = arcpy.Raster(ASPECT_RASTER)
-    NODATA = RASTER_OBJECT.noDataValue
-    LOGGER.debug("NODATA is: "+str(NODATA))
-
     # Determine if we are working with a POLYGON shape type and adjust
     # the fields list to use the centroid inside X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
@@ -228,7 +219,6 @@ try:
     COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
     # Destroy the temporary table
     arcpy.Delete_management("tableViewHazards")
-
     LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
     if COUNT_RECORDS == 0:

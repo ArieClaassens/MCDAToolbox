@@ -15,14 +15,11 @@ Slope raster with the Get Cell Value Spatial Analysis Tool.
 """
 
 # Import libraries
-import sys # required for the sys.exit() call to halt the script
+import sys
 import logging
 import logging.handlers
-#from datetime import datetime, date
-import time # For timing purposes
+import time
 from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
 import arcpy
 
 # Functions and classes
@@ -119,14 +116,6 @@ arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELD = "SLOPE" # Which field must we filter on and check for?
 
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
-
 # Tool configuration:
 # Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
@@ -149,6 +138,14 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
+
 # Put everything in a try/finally statement, so that we can close the logger
 # even if the script bombs out or we raise an execution error along the line
 try:
@@ -168,12 +165,16 @@ try:
         raise arcpy.ExecuteError
 
     # Check if the raster layer has any features before we start
-    if int(arcpy.GetRasterProperties_management(SLOPE_RASTER, "ALLNODATA").
+    # Adapted from https://geonet.esri.com/message/487616#comment-520588
+    if int(arcpy.GetRasterProperties_management(SLOPE_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
-        LOGGER.error("{0} has no features. Please use a raster layer that \
-                      already contains the required features and attributes." \
-                      .format(SLOPE_RASTER))
-        raise arcpy.ExecuteError
+        if int(arcpy.GetRasterProperties_management(SLOPE_RASTER, "ALLNODATA").
+           getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in {0}".format(SLOPE_RASTER))
+            LOGGER.error("Please use a raster layer that contains data.")
+            raise arcpy.ExecuteError
+    else:
+        LOGGER.debug("The raster is without NoData")
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
@@ -194,63 +195,30 @@ try:
             # See https://docs.python.org/2/library/sys.html#sys.exit
             sys.exit(0)
 
-    # Identify NoData value for the Raster.
-    # WHAT DO WE DO WITH IT? SUBSTITUE A USER-SUPPLIED VALUE?!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # See http://gis.stackexchange.com/questions/111449/how-to-access-raster-nodata-value
-    RASTER_OBJ = arcpy.Raster(SLOPE_RASTER)
-    NODATA = RASTER_OBJ.noDataValue
-    LOGGER.debug("NODATA is: "+str(NODATA))
-
-
-    # Determine if we are working with a POINT or POLYGON shape type and adjust
+    # Determine if we are working with a POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
     FC_DESC = arcpy.Describe(TARGET_FC)
-    if FC_DESC.shapeType == "Point":
-        LOGGER.info("POINT feature class detected. Proceeding.")
-        FIELDLIST = ['OBJECTID', 'SHAPE@X', 'SHAPE@Y', REQUIRED_FIELD]
-    elif FC_DESC.shapeType == "Polygon":
+    if FC_DESC.shapeType == "Polygon":
         LOGGER.info("POLYGON feature class detected. Proceeding.")
         FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
     else:
-        LOGGER.error("Unsupported shape type detected. Please use a \
-    feature class with a POINT or POLYGON shape type")
+        LOGGER.error("Unsupported shape type detected.")
         raise arcpy.ExecuteError
 
     LOGGER.info("Starting the Slope calculations")
     START_TIME = time.time()
 
-    #Check if the input is sane
-    #Check if the TARGET_FC has an SLOPE attribute and of Type LONG
-
-    #Check if the SLOPE FC is a raster dataset
-
-    # Identify NODATA value for the Raster. See
-    #http://gis.stackexchange.com/questions/111449/how-to-access-raster-NODATA-value
-    RASTER_OBJECT = arcpy.Raster(SLOPE_RASTER)
-    NODATA = RASTER_OBJECT.noDataValue
-    #arcpy.AddMessage("NODATA is: "+str(NODATA))
-
-    arcpy.AddMessage("\nStarting the Slope value calculations\n")
-    START_TIME = time.time()
-
-    # Find a better way of calculating the total number of rows to be updated
-    #COUNT_RECORDS = collections.Counter(row[0] for row in
-    #                                   arcpy.da.SearchCursor(TARGET_FC, "OBJECTID",
-    #                                                         QRY_FILTER))
-    # See https://docs.python.org/3/library/collections.html#collections.COUNTER -
-    # we've got OID: 1 pairs for all the rows.
-    #COUNT_RECORDS = sum(COUNT_RECORDS.values())
+    # Get the total number of records to process
+    # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
     COUNT_RECORDS = 0
-    arcpy.AddMessage("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-
-    with arcpy.da.SearchCursor(TARGET_FC, ["OBJECTID"], QRY_FILTER) as countcursor:
-        for row in countcursor:
-            COUNT_RECORDS += 1
-            #arcpy.AddMessage("COUNT_RECORDS is now: " + str(COUNT_RECORDS))
-
-
-    arcpy.AddMessage("COUNT_RECORDS END: " + str(COUNT_RECORDS))
+    LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+    COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+    # Destroy the temporary table
+    arcpy.Delete_management("tableViewHazards")
+    LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
     if COUNT_RECORDS == 0:
         arcpy.AddError("The Hazards FC does not contain any features to process.")
@@ -258,17 +226,18 @@ try:
 
     COUNTER = 0
 
-    with arcpy.da.UpdateCursor(TARGET_FC, FIELD_LIST, QRY_FILTER) as cursor:
+    with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
         for row in cursor:
             COUNTER += 1
             # https://docs.python.org/3/library/decimal.html
             pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) *100
-            arcpy.AddMessage("Processing OID " + str(row[0]) + ", with SLOPE of "+
+            LOGGER.info("Processing OID " + str(row[0]) + ", with SLOPE of "+
                              str(row[3]) + ". Feature " + str(COUNTER) + " of " +
                              str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
-            # arcpy.AddMessage the coordinate tuple
-            #arcpy.AddMessage("X and Y: " + str(row[1]) + " " + str(row[2]))
-            # Set a default value to cater for NODATA returned by the GetCellValue tool
+            # Print the coordinate tuple
+            LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
+            # Set an initial default value
+            LOGGER.debug("Setting initial default value of -180")
             cellvalue = -180 # get a better placeholder value!!!
             # Get the Cell Value from the SLOPE Raster
             try:
@@ -277,16 +246,13 @@ try:
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = float(cellresult.getOutput(0))
-                #arcpy.AddMessage(row[3])
-                # If the cell does not have a value, set a value to add to TARGET_FC
-                #if (row[3] == str(NODATA)):
-                #   row[3] = -2
+                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
 
             except Exception as err:
                 arcpy.AddMessage(err.args[0])
 
             row[3] = cellvalue
-            #arcpy.AddMessage("Slope Cell Value is " + str(row[3]))
+            LOGGER.debug("The slope value is now: {0}".format(row[3]))
             cursor.updateRow(row)
 
     # Calculate the execution time
