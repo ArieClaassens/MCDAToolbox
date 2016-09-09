@@ -15,7 +15,6 @@ aspect raster dataset with the Get Cell Value Spatial Analysis Tool
 """
 
 #Import libraries
-import sys
 import logging
 import logging.handlers
 import time
@@ -191,9 +190,9 @@ try:
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the main thread
-            # See https://docs.python.org/2/library/sys.html#sys.exit
-            sys.exit(0)
+            # Terminate the script
+            raise arcpy.ExecuteError
+
 
     # Determine if we are working with a POLYGON shape type and adjust
     # the fields list to use the centroid inside X and Y fields added in the
@@ -253,10 +252,9 @@ try:
             except Exception as err:
                 arcpy.AddError(err.args[0])
 
-            #LOGGER.debug(cellvalue)
             row[3] = cellvalue
-            LOGGER.debug("The aspect value is now: {0}".format(row[3]))
             cursor.updateRow(row)
+            LOGGER.debug("The aspect value is now: {0}".format(row[3]))
 
     # Calculate the execution time
     LOGGER.info("Aspect value calculation completed")

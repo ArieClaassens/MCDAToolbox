@@ -16,7 +16,6 @@ inside centroid X and Y coordinates
 """
 
 #Import libraries
-import sys
 import logging
 import logging.handlers
 import time
@@ -193,9 +192,8 @@ try:
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the main thread
-            # See https://docs.python.org/2/library/sys.html#sys.exit
-            sys.exit(0)
+            # Terminate the script
+            raise arcpy.ExecuteError
 
     # Determine if we are working with a POINT or POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
@@ -255,8 +253,8 @@ try:
                 LOGGER.error(err.args[0])
 
             row[3] = cellvalue
-            LOGGER.debug("The land cover value is now: {0}".format(row[3]))
             cursor.updateRow(row)
+            LOGGER.debug("The land cover value is now: {0}".format(row[3]))
 
     # Calculate the execution time
     STOP_TIME = time.time()

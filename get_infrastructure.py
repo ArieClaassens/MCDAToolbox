@@ -19,14 +19,10 @@ and assign a weight based on the count:
 """
 
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
-#from datetime import datetime, date
-import time # For timing purposes
+import time
 from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
 import arcpy
 
 # Functions and classes
@@ -110,7 +106,6 @@ def compare_list_items(checklist):
 
     return mismatch
 
-
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
@@ -121,7 +116,6 @@ INFRA_FC2 = arcpy.GetParameterAsText(5)
 BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
 UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
 
-
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
@@ -131,14 +125,6 @@ INFRA_FEATURE_LAYER_LIST = [] # Empty list that will store feature layers
 #buffer distance in meter
 BUFFER_DISTM = BUFFER_DIST + " Meters"
 COUNTER = 0
-
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Tool configuration:
 # Set up the logging parameters and inform the user
@@ -161,6 +147,14 @@ LOGGER.debug("------- START LOGGING-----------")
 # Use the default arcpy.AddMessage method to only show this in the tool output
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
+
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Put everything in a try/finally statement, so that we can close the logger
 # even if the script bombs out or we raise an execution error along the line
@@ -216,17 +210,26 @@ try:
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the main thread
-            # See https://docs.python.org/2/library/sys.html#sys.exit
-            sys.exit(0)
+            # Terminate the script
+            raise arcpy.ExecuteError
 
     LOGGER.info("Starting with Infrastructure Proximity Analysis")
     START_TIME = time.time()
 
-    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", FILTER_QUERY)
-    COUNT_RECORDS = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-    arcpy.AddMessage("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-    LOGGER.debug("Total number of features: " + str(COUNT_RECORDS))
+    # Get the total number of records to process
+    # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
+    COUNT_RECORDS = 0
+    LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+    COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+    # Destroy the temporary table
+    arcpy.Delete_management("tableViewHazards")
+    LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
+
+    if COUNT_RECORDS == 0:
+        arcpy.AddError("The Hazards FC does not contain any features.")
+        raise arcpy.ExecuteError
 
     #Create feature layers out of Infrastructure FC
     LIST_COUNT = 0

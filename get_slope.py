@@ -15,7 +15,6 @@ Slope raster with the Get Cell Value Spatial Analysis Tool.
 """
 
 # Import libraries
-import sys
 import logging
 import logging.handlers
 import time
@@ -191,9 +190,8 @@ try:
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the main thread
-            # See https://docs.python.org/2/library/sys.html#sys.exit
-            sys.exit(0)
+            # Terminate the script
+            raise arcpy.ExecuteError
 
     # Determine if we are working with a POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
@@ -221,7 +219,7 @@ try:
     LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
     if COUNT_RECORDS == 0:
-        arcpy.AddError("The Hazards FC does not contain any features to process.")
+        arcpy.AddError("The Hazards FC does not contain any features.")
         raise arcpy.ExecuteError
 
     COUNTER = 0
@@ -252,8 +250,8 @@ try:
                 arcpy.AddMessage(err.args[0])
 
             row[3] = cellvalue
-            LOGGER.debug("The slope value is now: {0}".format(row[3]))
             cursor.updateRow(row)
+            LOGGER.debug("The slope value is now: {0}".format(row[3]))
 
     # Calculate the execution time
     STOP_TIME = time.time()
