@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        getInfrastructure
-# Purpose:     Calculates the Infrastructure value for each feature.
+# Name:        getKeyFeatures
+# Purpose:     Calculates the Key Features value for each feature
 #
 # Author:      Arie Claassens
 #
@@ -10,8 +10,8 @@
 #------------------------------------------------------------------------------
 
 """
-Get the count of Infrastructure (Railways & Roads) within a predefined radius
-and assign a weight based on the count:
+# Get the count of KeyFeatures (OSM Buildings shapefile) within a predefined
+radius and assign a weight based on the count:
 0 features within radius = 0
 1 feature within radius = 1
 2 features within radius = 2
@@ -19,12 +19,15 @@ and assign a weight based on the count:
 """
 
 #Import libraries
+import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
-import time
+#from datetime import datetime, date
+import time # For timing purposes
 from decimal import Decimal, getcontext #For progress COUNTER
+# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
+#import collections
 import arcpy
-from arcpy import env
 
 # Functions and classes
 # Adapted from:
@@ -111,22 +114,30 @@ def compare_list_items(checklist):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
-SOURCE_FC = arcpy.GetParameterAsText(3)
-INFRA_FC1 = arcpy.GetParameterAsText(4)
-INFRA_FC2 = arcpy.GetParameterAsText(5)
+TARGET_FC = arcpy.GetParameterAsText(3)
+KEYFEATURES_FC1 = arcpy.GetParameterAsText(4)
+KEYFEATURES_FC2 = arcpy.GetParameterAsText(5)
 BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
 UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
-REQUIRED_FIELDS = ['INFRASTRUCTURE', 'INFRA_BUFFER_DIST']
-REQUIRED_FIELD = "INFRASTRUCTURE" # Which field must we filter on and check for?
-INFRASTRUCTURE_LIST = [] # Empty list to store the feature classes to process
-INFRA_FEATURE_LAYER_LIST = [] # Empty list that will store feature layers
-#buffer distance in meter, append the measurement to the integer value
-BUFFER_DISTM = BUFFER_DIST + " Meters"
+REQUIRED_FIELD = "KEYFEATURES" # Which field must we filter on and check for?
+KEYFEATURECLASS_LIST = [] # Empty list for the feature classes to process
+KEYFEATURELAYER_LIST = [] # Empty list to store resulting feature layers
 COUNTER = 0
+# Append the Meters required for the buffer distance parameter
+BUFFER_DISTM = BUFFER_DIST + " Meters"
+
+
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Tool configuration:
 # Set up the logging parameters and inform the user
@@ -138,7 +149,7 @@ BACKUPCOUNT = 10
 # Change this variable to a unique identifier for each script it runs in.
 # Cannot use LOGGER.findCaller(), as we're calling from an embedded script in
 # the Python toolbox.
-LOGSTAMP = "AddInfrastructure" # Identifies the source of the log entries
+LOGSTAMP = "AddKeyFeatures" # Identifies the source of the log entries
 LOGGER = logging.getLogger(LOGSTAMP)
 HANDLER = ArcPyLogHandler(LOGFILE, MAXBYTES, BACKUPCOUNT)
 FORMATTER = logging.Formatter("%(asctime)s %(name)-15s %(levelname)-8s %(message)s")
@@ -150,13 +161,6 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Put everything in a try/finally statement, so that we can close the logger
 # even if the script bombs out or we raise an execution error along the line
@@ -164,173 +168,172 @@ try:
     # Sanity checks:
 
     # Check if the target feature class has any features before we start
-    if int(arcpy.GetCount_management(SOURCE_FC)[0]) == 0:
+    if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \
                       already contains the required features and attributes." \
-                      .format(SOURCE_FC))
+                      .format(TARGET_FC))
         raise arcpy.ExecuteError
 
-    # Check if the target feature class has all of the required attribute fields.
-    for checkfield in REQUIRED_FIELDS:
-        if not fieldexist(SOURCE_FC, checkfield):
-            LOGGER.debug("Check for field: " + checkfield)
-            LOGGER.error("The field "+ checkfield +" does not exist. \
-                             Please use the correct feature class.")
-            raise arcpy.ExecuteError
+    # Check if the target feature class has the required attribute field.
+    if not fieldexist(TARGET_FC, REQUIRED_FIELD):
+        LOGGER.error("The field "+ REQUIRED_FIELD +" does not exist. \
+                         Please use the correct Hazard feature class.")
+        raise arcpy.ExecuteError
 
     #Build the list with the feature classes that will be used
-    # We need at least one FC to work with, so let's check first if it has any
-    # content
-    if int(arcpy.GetCount_management(INFRA_FC1)[0]) == 0:
-        LOGGER.error("{0} has no features. Please use a feature class that \
-                       contains data.".format(INFRA_FC1))
+    # We need at least one FC to work with; check first if it has any content
+    if int(arcpy.GetCount_management(KEYFEATURES_FC1)[0]) == 0:
+        arcpy.AddError("{0} has no features. Please use a feature class that \
+                       contains data.".format(KEYFEATURES_FC1))
         raise arcpy.ExecuteError
     else:
-        INFRASTRUCTURE_LIST.append(INFRA_FC1)
+        KEYFEATURECLASS_LIST.append(KEYFEATURES_FC1)
 
     #First check if FC2 was passed in to the script before we check if it is empty
-    if len(INFRA_FC2) > 1:
-        if int(arcpy.GetCount_management(INFRA_FC2)[0]) == 0:
-            LOGGER.error("{0} has no features. Please use a feature class that \
-                           contains data.".format(INFRA_FC2))
+    if len(KEYFEATURES_FC2) > 1:
+        if int(arcpy.GetCount_management(KEYFEATURES_FC2)[0]) == 0:
+            arcpy.AddError("{0} has no features. Please use a feature class that \
+                           contains data.".format(KEYFEATURES_FC2))
             raise arcpy.ExecuteError
         else:
-            INFRASTRUCTURE_LIST.append(INFRA_FC2)
+            KEYFEATURECLASS_LIST.append(KEYFEATURES_FC2)
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
     LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
     if CHECK_PROJ == 'true':
-        #LOGGER.info(SOURCE_FC)
+        #LOGGER.info(TARGET_FC)
         LIST_FC = [] # Emtpy list to store FC
         # Add spatial references of all items
-        LIST_FC.append(get_projection(SOURCE_FC))
-        LIST_FC.append(get_projection(INFRA_FC1))
-        if len(INFRA_FC2) > 1:
-            LIST_FC.append(get_projection(INFRA_FC2))
+        LIST_FC.append(get_projection(TARGET_FC))
+        LIST_FC.append(get_projection(KEYFEATURES_FC1))
+        if len(KEYFEATURES_FC2) > 1:
+            LIST_FC.append(get_projection(KEYFEATURES_FC2))
         LOGGER.debug("The list of spatial references to check is:")
         LOGGER.debug(LIST_FC)
         LOGGER.info("Comparing spatial references of the data sets")
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the script
-            raise arcpy.ExecuteError
+            # Terminate the main thread
+            # See https://docs.python.org/2/library/sys.html#sys.exit
+            sys.exit(0)
 
-    # Adjust the fields list to include the Object ID and Shape data
-    LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
-    # Insert the fields at the start of the list to obtain the required
-    # field ordering
-    REQUIRED_FIELDS.insert(0,'OBJECTID')
-    REQUIRED_FIELDS.insert(0,'SHAPE@')
-    FIELDLIST = REQUIRED_FIELDS
-    LOGGER.info(FIELDLIST)
-
-    LOGGER.info("Starting with Infrastructure Proximity Analysis")
-    START_TIME = time.time()
-
-    # Get the total number of records to process
-    arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
-    RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-    arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
-
-    if RECORD_COUNT == 0:
-        arcpy.AddError("The Hazard Areas FC does not contain any features.")
+    # Determine if we are working with a POINT or POLYGON shape type and adjust
+    # the fields list to use the inside centroid X and Y fields added in the
+    # first step, i.e. INSIDE_X and INSIDE_Y
+    FC_DESC = arcpy.Describe(TARGET_FC)
+    if FC_DESC.shapeType == "Point":
+        LOGGER.info("POINT feature class detected. Proceeding.")
+        FIELDLIST = ['OBJECTID', 'SHAPE@X', 'SHAPE@Y', REQUIRED_FIELD]
+    elif FC_DESC.shapeType == "Polygon":
+        LOGGER.info("POLYGON feature class detected. Proceeding.")
+        FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
+    else:
+        LOGGER.error("Unsupported shape type detected. Please use a \
+    feature class with a POINT or POLYGON shape type")
         raise arcpy.ExecuteError
 
-    #Create feature layers out of Infrastructure FC
+    LOGGER.info("Starting the Key Features impact calculations")
+    START_TIME = time.time()
+
+    arcpy.AddMessage("Starting with Key Features Proximity Analysis")
+    START_TIME = time.time()
+
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", FILTER_QUERY)  # SelectLayer_management -> The input cannot be the path to a feature class on disk.
+    RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
+    #arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
+    #Create feature layers out of Key Features FC
     LIST_COUNT = 0
-    for item in INFRASTRUCTURE_LIST:
+
+    for item in KEYFEATURECLASS_LIST:
         LIST_COUNT += 1
         # Dynamically generate a name for the Feature layer
         itemFlayerName = "Flayer_" + str(LIST_COUNT)
-        LOGGER.debug("Adding Feature Layer: " + itemFlayerName)
+        #arcpy.AddMessage("Adding Feature Layer: " + itemFlayerName)
         arcpy.MakeFeatureLayer_management(item, itemFlayerName)
-        INFRA_FEATURE_LAYER_LIST.append(itemFlayerName)
+        KEYFEATURELAYER_LIST.append(itemFlayerName)
+        #arcpy.AddMessage(listKeyFeatLayer)
 
-    LOGGER.info("Starting with the hazard areas processing")
-    ## AT THIS POINT, look at optimising the loop thru infralist
-    with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, FILTER_QUERY) as cursor:
+    arcpy.AddMessage("Starting with the Hazards processing....")
+
+    with arcpy.da.UpdateCursor(TARGET_FC, ['OBJECTID', 'KeyFeatures',
+                                           'KEYFEATURES_BUFFER_DIST'],
+                               FILTER_QUERY) as cursor:
         for row in cursor:
-            #Loop through Hazard Areas FC
+            #Loop through Target FC
             COUNTER += 1
-            pctDone = Decimal(COUNTER) / Decimal(COUNT_RECORDS) * 100
-            LOGGER.info("Processing OID " + str(row[0]) +
-                        ", with INFRASTRUCTURE grading of " + str(row[2]) +
-                        ". Feature " + str(COUNTER) + " of " +
-                        str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
+            # https://docs.python.org/3/library/decimal.html
+            pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) *100
+            arcpy.AddMessage("Processing OID " + str(row[0]) +
+                             ", with KEYFEATURES grading of "+ str(row[1]) +
+                             ". Feature " + str(COUNTER) + " of " +
+                             str(RECORD_COUNT) + " (" + str(pctDone) + " %)")
 
-            # Iterate over items in Infrastructure list and tally up the total
             # Select the current feature from original Hazard FC
-            arcpy.SelectLayerByAttribute_management("inputHazard",
-                                                    "NEW_SELECTION",
+            arcpy.SelectLayerByAttribute_management("inputHazard", "NEW_SELECTION",
                                                     "OBJECTID = " + str(row[0]))
 
             # Initialise the COUNTER, with its local scope, to zero
-            totInfrastructure = 0
-            # Now loop through INFRASTRUCTURE feature layers and get the
-            # intersection
-            for fc in INFRA_FEATURE_LAYER_LIST:
+            countKeyFeat = 0
+            # Now loop through KEYFEATURES feature layers and get the intersection
+            for fc in KEYFEATURELAYER_LIST:
                 #arcpy.AddMessage("Now processing Feature Layer : " + fc)
                 # Takes longer due to the buffering done as part of each query.
-                # But faster than clipping source and using that.  Less risk of
+                # But faster than clipping source and using that. Less risk of
                 # losing or modding data too.
-                outputInfra = arcpy.SelectLayerByLocation_management(fc,
-                                                                     "WITHIN_A_DISTANCE_GEODESIC",
-                                                                     "inputHazard",
-                                                                     BUFFER_DISTM,
-                                                                     "")
+                outputKeyFeat = arcpy.SelectLayerByLocation_management(fc,
+                                                                       "WITHIN_A_DISTANCE_GEODESIC",
+                                                                       "inputHazard",
+                                                                       BUFFER_DISTM,
+                                                                       "")
                 # Count the rows and add it to the COUNTER
-                # The RECORD_COUNT2 method produces way larger results, e.g.  13
+                # The RECORD_COUNT2 method produces way larger results, e.g. 13
                 # versus the 1 reported by looping through the rows.
-                #RECORD_COUNT2 =
-                #int(arcpy.GetCount_management(outputInfra).getOutput(0))
-                #arcpy.AddMessage("RECORD_COUNT2 is: " + str(RECORD_COUNT2))
-                for row2 in outputInfra:
+                #RECORD_COUNT2 = int(arcpy.GetCount_management(outputInfrastructure).getOutput(0))
+                #arcpy.AddMessage("RECORD_COUNT2 is: " +  str(RECORD_COUNT2))
+                for row2 in outputKeyFeat:
                     # arcpy.AddMessage OIDs of selected features
                     #arcpy.AddMessage(row2.getSelectionSet())
-                    #totInfrastructure = 0
                     #arcpy.AddMessage("\tRunning the row2 inside loop")
-                    totInfrastructure += 1
+                    countKeyFeat += 1
                     # http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy-data-access/featureclasstonumpyarray.htm
-                    #arr = arcpy.da.FeatureClassToNumPyArray(row2,
-                    #"OID@",skip_nulls=True) # Should we do the skip_nulls?
-                    #arcpy.AddMessage("Total Infrastructure in radius: " +
-                    #str(arr["OID@"].sum()))
+                    #arr = arcpy.da.FeatureClassToNumPyArray(row2, "OID@",
+                    #                                        skip_nulls=True)
+                    # Should we do the skip_nulls?
+                    #arcpy.AddMessage("Total Infrastructure in radius: " + str(arr["OID@"].sum()))
                     #totPop = arr["grid_code"].sum()
 
-                #arcpy.AddMessage("ROW totInfrastructure is: " +
-                #str(totInfrastructure))
+                #arcpy.AddMessage("ROW countKeyFeat is: " + str(countKeyFeat))
 
             # Update the row with the population sum
-            #arcpy.AddMessage("totInfrastructure is: "+ str(totInfrastructure))
+            #arcpy.AddMessage("countKeyFeat is: "+ str(countKeyFeat))
             # Cast to integer to ensure we deal with integer values
-            totInfrastructure = int(totInfrastructure)
+            countKeyFeat = int(countKeyFeat)
 
-            # Calculate the grading.  A case statement would have worked nicely.
-            # Thanks Python!
-            if totInfrastructure == 0:
-                gradeInfrastructure = 0
-            elif totInfrastructure == 1:
-                gradeInfrastructure = 1
-            elif totInfrastructure == 2:
-                gradeInfrastructure = 2
+            # Calculate the grading. A case statement would have been nice to have.
+            if countKeyFeat == 0:
+                gradeKeyFeatures = 0
+            elif countKeyFeat == 1:
+                gradeKeyFeatures = 1
+            elif countKeyFeat == 2:
+                gradeKeyFeatures = 2
             else:
-                gradeInfrastructure = 3
+                gradeKeyFeatures = 3
 
-            #arcpy.AddMessage("Infrastructure grading: " +
-            #str(gradeInfrastructure))
-            # Assign the new value to the Infrastructure field
-            row[1] = gradeInfrastructure
-            # Assign the buffer distance to the Infrastructure buffer distance
-            # field
+            arcpy.AddMessage("KEYFEATURES grading: " + str(gradeKeyFeatures))
+            # Assign the new value to the KeyFeatures field
+            row[1] = gradeKeyFeatures
+            # Assign the buffer distance to the Key Features buffer distance field
             row[2] = BUFFER_DIST
             cursor.updateRow(row)
             #arcpy.AddMessage("---------------------------------------")
+
     STOP_TIME = time.time()
-    LOGGER.info("Total execution time in seconds = " +
-                str(int(STOP_TIME - START_TIME)) + " and in minutes = " +
-                str(int(STOP_TIME - START_TIME) / 60))
+    arcpy.AddMessage("\nDone with Key Features Proximity Analysis")
+    arcpy.AddMessage("Total execution time in seconds = " +
+                     str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
+                     str(int(STOP_TIME-START_TIME)/60))
 
 finally:
     # Shut down logging after script has finished running.

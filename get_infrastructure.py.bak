@@ -120,7 +120,7 @@ UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
-REQUIRED_FIELDS = ['INFRASTRUCTURE', 'INFRA_BUFFER_DIST']
+REQUIRED_FIELDS = ['OBJECTID', 'INFRASTRUCTURE', 'INFRA_BUFFER_DIST']
 REQUIRED_FIELD = "INFRASTRUCTURE" # Which field must we filter on and check for?
 INFRASTRUCTURE_LIST = [] # Empty list to store the feature classes to process
 INFRA_FEATURE_LAYER_LIST = [] # Empty list that will store feature layers
@@ -221,8 +221,8 @@ try:
     LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
     # Insert the fields at the start of the list to obtain the required
     # field ordering
-    REQUIRED_FIELDS.insert(0,'OBJECTID')
     REQUIRED_FIELDS.insert(0,'SHAPE@')
+    REQUIRED_FIELDS.insert(0,'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
     LOGGER.info(FIELDLIST)
 
@@ -230,12 +230,18 @@ try:
     START_TIME = time.time()
 
     # Get the total number of records to process
-    arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
-    RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-    arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
+    # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
+    COUNT_RECORDS = 0
+    LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
+    arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+    COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+    # Destroy the temporary table
+    arcpy.Delete_management("tableViewHazards")
+    LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
-    if RECORD_COUNT == 0:
-        arcpy.AddError("The Hazard Areas FC does not contain any features.")
+    if COUNT_RECORDS == 0:
+        arcpy.AddError("The Hazards FC does not contain any features.")
         raise arcpy.ExecuteError
 
     #Create feature layers out of Infrastructure FC
@@ -244,23 +250,26 @@ try:
         LIST_COUNT += 1
         # Dynamically generate a name for the Feature layer
         itemFlayerName = "Flayer_" + str(LIST_COUNT)
-        LOGGER.debug("Adding Feature Layer: " + itemFlayerName)
+        #arcpy.AddMessage("Adding Feature Layer: " + itemFlayerName)
         arcpy.MakeFeatureLayer_management(item, itemFlayerName)
         INFRA_FEATURE_LAYER_LIST.append(itemFlayerName)
+        #arcpy.AddMessage(INFRA_FEATURE_LAYER_LIST)
+    LOGGER.info("Starting with the Hazards processing")
 
-    LOGGER.info("Starting with the hazard areas processing")
-    ## AT THIS POINT, look at optimising the loop thru infralist
-    with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, FILTER_QUERY) as cursor:
+    with arcpy.da.UpdateCursor(SOURCE_FC, REQUIRED_FIELDS,
+                               FILTER_QUERY) as cursor:
         for row in cursor:
-            #Loop through Hazard Areas FC
+            #Loop through HazardBuffer FC
             COUNTER += 1
+            # https://docs.python.org/3/library/decimal.html
             pctDone = Decimal(COUNTER) / Decimal(COUNT_RECORDS) * 100
             LOGGER.info("Processing OID " + str(row[0]) +
-                        ", with INFRASTRUCTURE grading of " + str(row[2]) +
+                        ", with INFRASTRUCTURE grading of " + str(row[1]) +
                         ". Feature " + str(COUNTER) + " of " +
                         str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
 
-            # Iterate over items in Infrastructure list and tally up the total
+            # Now loop over items in Infrastructure list and tally up the total
+            # after parsing all of them
             # Select the current feature from original Hazard FC
             arcpy.SelectLayerByAttribute_management("inputHazard",
                                                     "NEW_SELECTION",

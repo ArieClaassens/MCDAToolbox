@@ -21,13 +21,10 @@ and NE positions on the polygon.
 """
 
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
 import time # For timing purposes
 from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
 import arcpy
 from arcpy import env
 
@@ -250,11 +247,8 @@ try:
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the main thread
-            # See https://docs.python.org/2/library/sys.html#sys.exit
-            LOGGER.warn("Spatial references do not match")
+            # Terminate the script
             raise arcpy.ExecuteError
-            sys.exit(0)
 
     # Adjust the fields list to include the Object ID and Shape data
     LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
@@ -268,9 +262,14 @@ try:
     arcpy.AddMessage("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 
+    # Get the total number of records to process
     arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
     arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
+
+    if RECORD_COUNT == 0:
+        arcpy.AddError("The Hazard Areas FC does not contain any features.")
+        raise arcpy.ExecuteError
 
     #Create feature layers out of Hazards FC
     LIST_COUNT = 0
@@ -426,4 +425,3 @@ finally:
     LOGGER.removeHandler(HANDLER)
     HANDLER.close()
     logging.shutdown()
-

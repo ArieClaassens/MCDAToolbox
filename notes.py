@@ -1,5 +1,7 @@
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
 
+# WHERE script checks for all entries in REQUIRED_FIELDS, the REQUIRED_FIELD must change to FILTER_FIELD!!!!
+
 # Add a filter in script on parameters - define the specific feature class types that are allowed as input, e.g. POLYGON
 
 # Toolbox tools descriptions: http://resources.arcgis.com/en/help/main/10.1/index.html#/A_quick_tour_of_documenting_tools_and_toolboxes/001500000014000000/
