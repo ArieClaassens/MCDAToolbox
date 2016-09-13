@@ -249,7 +249,7 @@ try:
 	LOGGER.info("Starting with the hazards area processing")
 	with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
-			#Loop through hazard Areas FC
+			#Loop through Hazard Areas FC
 			COUNTER += 1
 			pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) *100
 			LOGGER.info("Processing OID " + str(row[0]) +
@@ -267,7 +267,7 @@ try:
 			TOTAL_POI_ITEMS = 0
 			# Now loop through POI feature layers and get the intersection
 			for fc in POI_FEATLAYER_LIST:
-				#LOGGER.info("Now processing Feature Layer : " + fc)
+				LOGGER.debug("Now processing Feature Layer : " + fc)
 				# Takes longer due to the buffering done as part of each query.
 				# But faster than clipping source and using that.
 				TEMP = arcpy.SelectLayerByLocation_management(fc,
@@ -311,3 +311,4 @@ finally:
 	LOGGER.removeHandler(HANDLER)
 	HANDLER.close()
 	logging.shutdown()
+
