@@ -45,8 +45,8 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         #except:
         except Exception as inst:
             # Log the exception type and all error messages returned
-            LOGGER.error(type(inst))
-            LOGGER.error(arcpy.GetMessages())
+            arcpy.AddError(type(inst))
+            arcpy.AddError(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -236,7 +236,7 @@ try:
     arcpy.AddMessage("Starting with Accidents Proximity Analysis")
     START_TIME = time.time()
 
-    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", FILTER_QUERY)
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
     #arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
 

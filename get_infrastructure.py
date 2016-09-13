@@ -43,8 +43,8 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         #except:
         except Exception as inst:
             # Log the exception type and all error messages returned
-            LOGGER.error(type(inst))
-            LOGGER.error(arcpy.GetMessages())
+            arcpy.AddError(type(inst))
+            arcpy.AddError(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -221,16 +221,16 @@ try:
     LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
     # Insert the fields at the start of the list to obtain the required
     # field ordering
-    REQUIRED_FIELDS.insert(0,'OBJECTID')
     REQUIRED_FIELDS.insert(0,'SHAPE@')
+    REQUIRED_FIELDS.insert(0,'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.info(FIELDLIST)
+    LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
 
     LOGGER.info("Starting with Infrastructure Proximity Analysis")
     START_TIME = time.time()
 
     # Get the total number of records to process
-    arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
+    arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", QRY_FILTER)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
     arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
 
@@ -250,15 +250,15 @@ try:
 
     LOGGER.info("Starting with the hazard areas processing")
     ## AT THIS POINT, look at optimising the loop thru infralist
-    with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, FILTER_QUERY) as cursor:
+    with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, QRY_FILTER) as cursor:
         for row in cursor:
             #Loop through Hazard Areas FC
             COUNTER += 1
-            pctDone = Decimal(COUNTER) / Decimal(COUNT_RECORDS) * 100
+            pctDone = Decimal(COUNTER) / Decimal(RECORD_COUNT) * 100
             LOGGER.info("Processing OID " + str(row[0]) +
                         ", with INFRASTRUCTURE grading of " + str(row[2]) +
                         ". Feature " + str(COUNTER) + " of " +
-                        str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
+                        str(RECORD_COUNT) + " or " + str(pctDone) + " %")
 
             # Iterate over items in Infrastructure list and tally up the total
             # Select the current feature from original Hazard FC
@@ -266,65 +266,48 @@ try:
                                                     "NEW_SELECTION",
                                                     "OBJECTID = " + str(row[0]))
 
-            # Initialise the COUNTER, with its local scope, to zero
-            totInfrastructure = 0
-            # Now loop through INFRASTRUCTURE feature layers and get the
-            # intersection
+            # Initialize the counter, with local scope, to zero
+            TOTAL_INFRA_ITEMS = 0
+            # Now loop through INFRASTRUCTURE feature layers and intersect
+            # with the selected feature to calculate the total
             for fc in INFRA_FEATURE_LAYER_LIST:
-                #arcpy.AddMessage("Now processing Feature Layer : " + fc)
+                LOGGER.debug("Now processing feature Layer : " + fc)
                 # Takes longer due to the buffering done as part of each query.
-                # But faster than clipping source and using that.  Less risk of
-                # losing or modding data too.
-                outputInfra = arcpy.SelectLayerByLocation_management(fc,
-                                                                     "WITHIN_A_DISTANCE_GEODESIC",
-                                                                     "inputHazard",
-                                                                     BUFFER_DISTM,
-                                                                     "")
+                # But faster than clipping source and using that.
+                TEMP = arcpy.SelectLayerByLocation_management(fc,
+                                                              "WITHIN_A_DISTANCE_GEODESIC",
+                                                              "inputHazard",
+                                                              BUFFER_DISTM,
+                                                              "")
                 # Count the rows and add it to the COUNTER
                 # The RECORD_COUNT2 method produces way larger results, e.g.  13
                 # versus the 1 reported by looping through the rows.
-                #RECORD_COUNT2 =
-                #int(arcpy.GetCount_management(outputInfra).getOutput(0))
-                #arcpy.AddMessage("RECORD_COUNT2 is: " + str(RECORD_COUNT2))
-                for row2 in outputInfra:
-                    # arcpy.AddMessage OIDs of selected features
-                    #arcpy.AddMessage(row2.getSelectionSet())
-                    #totInfrastructure = 0
-                    #arcpy.AddMessage("\tRunning the row2 inside loop")
-                    totInfrastructure += 1
-                    # http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy-data-access/featureclasstonumpyarray.htm
-                    #arr = arcpy.da.FeatureClassToNumPyArray(row2,
-                    #"OID@",skip_nulls=True) # Should we do the skip_nulls?
-                    #arcpy.AddMessage("Total Infrastructure in radius: " +
-                    #str(arr["OID@"].sum()))
-                    #totPop = arr["grid_code"].sum()
+                TOTAL_INFRA_ITEMS += int(arcpy.GetCount_management(TEMP).getOutput(0))
 
-                #arcpy.AddMessage("ROW totInfrastructure is: " +
-                #str(totInfrastructure))
+                LOGGER.debug("TOTAL_INFRA_ITEMS is: " + str(TOTAL_INFRA_ITEMS))
 
-            # Update the row with the population sum
-            #arcpy.AddMessage("totInfrastructure is: "+ str(totInfrastructure))
+            # Update the row with the infrastructure sum
             # Cast to integer to ensure we deal with integer values
-            totInfrastructure = int(totInfrastructure)
+            TOTAL_INFRA_ITEMS = int(TOTAL_INFRA_ITEMS)
+            LOGGER.debug("FINAL TOTAL_INFRA_ITEMS is: " + str(TOTAL_INFRA_ITEMS))
 
             # Calculate the grading.  A case statement would have worked nicely.
             # Thanks Python!
-            if totInfrastructure == 0:
+            if TOTAL_INFRA_ITEMS == 0:
                 gradeInfrastructure = 0
-            elif totInfrastructure == 1:
+            elif TOTAL_INFRA_ITEMS == 1:
                 gradeInfrastructure = 1
-            elif totInfrastructure == 2:
+            elif TOTAL_INFRA_ITEMS == 2:
                 gradeInfrastructure = 2
             else:
                 gradeInfrastructure = 3
 
-            #arcpy.AddMessage("Infrastructure grading: " +
-            #str(gradeInfrastructure))
+            LOGGER.info("Infrastructure grade: {0}".format(gradeInfrastructure))
             # Assign the new value to the Infrastructure field
-            row[1] = gradeInfrastructure
+            row[2] = gradeInfrastructure
             # Assign the buffer distance to the Infrastructure buffer distance
             # field
-            row[2] = BUFFER_DIST
+            row[3] = BUFFER_DIST
             cursor.updateRow(row)
             #arcpy.AddMessage("---------------------------------------")
     STOP_TIME = time.time()
