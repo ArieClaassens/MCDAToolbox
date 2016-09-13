@@ -131,14 +131,6 @@ POPFEATCLASS_LIST = [] # Empty list that will store the feature classes to proce
 POPFEATLAYER_LIST = [] # Empty list that will store feature layers
 COUNTER = 0
 
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
-
 # Tool configuration:
 # Set up the logging parameters and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
@@ -160,6 +152,14 @@ LOGGER.debug("------- START LOGGING-----------")
 # Use the default arcpy.AddMessage method to only show this in the tool output
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
+
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Put everything in a try/finally statement, so that we can close the logger
 # even if the script bombs out or we raise an execution error along the line
