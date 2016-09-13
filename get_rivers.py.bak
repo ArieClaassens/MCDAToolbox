@@ -110,11 +110,11 @@ def compare_list_items(checklist):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
-SOURCE_FC = arcpy.GetParameterAsText(0)
-RIVERS_FC1 = arcpy.GetParameterAsText(1)
-RIVERS_FC2 = arcpy.GetParameterAsText(2)
-BUFFER_DIST = arcpy.GetParameterAsText(3) # buffer distance in meters
-UPDATE_ONLY = arcpy.GetParameterAsText(4) # Boolean result received as text
+SOURCE_FC = arcpy.GetParameterAsText(3)
+RIVERS_FC1 = arcpy.GetParameterAsText(4)
+RIVERS_FC2 = arcpy.GetParameterAsText(5)
+BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
+UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
@@ -242,10 +242,9 @@ try:
 		LIST_COUNT += 1
 		# Dynamically generate a name for the Feature layer
 		itemFlayerName = "Flayer_" + str(LIST_COUNT)
-		#arcpy.AddMessage("Adding Feature Layer: " + itemFlayerName)
+		LOGGER.debug("Adding Feature Layer: " + itemFlayerName)
 		arcpy.MakeFeatureLayer_management(item, itemFlayerName)
 		RIVERSFEATLAYER_LIST.append(itemFlayerName)
-		#arcpy.AddMessage(listInfraFeatLayer)
 
 	LOGGER.info("Starting with the hazards area processing")
 	with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, QRY_FILTER) as cursor:
