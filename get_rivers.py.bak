@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
-# Name:        getKeyFeatures
-# Purpose:     Calculates the Key Features value for each feature
+# Name:        getRivers
+# Purpose:     Calculates how many rivers intersect with the polygon.
 #
 # Author:      Arie Claassens
 #
@@ -10,8 +10,8 @@
 #------------------------------------------------------------------------------
 
 """
-Get the count of KeyFeatures (Buildings) within a predefined radius
-and assign a weight based on the count:
+Get the count of Rivers and Water Basins within a predefined radius and
+assign a weight based on the count:
 0 features within radius = 0
 1 feature within radius = 1
 2 features within radius = 2
@@ -24,10 +24,9 @@ import logging.handlers
 import time
 from decimal import Decimal, getcontext #For progress COUNTER
 import arcpy
-from arcpy import env
 
 # Functions and classes
-# Adapted from:
+# Adapted from
 # http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 	"""
@@ -111,19 +110,19 @@ def compare_list_items(checklist):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
-SOURCE_FC = arcpy.GetParameterAsText(3)
-KEYFEATURES_FC1 = arcpy.GetParameterAsText(4)
-KEYFEATURES_FC2 = arcpy.GetParameterAsText(5)
-BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
-UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
+SOURCE_FC = arcpy.GetParameterAsText(0)
+RIVERS_FC1 = arcpy.GetParameterAsText(1)
+RIVERS_FC2 = arcpy.GetParameterAsText(2)
+BUFFER_DIST = arcpy.GetParameterAsText(3) # buffer distance in meters
+UPDATE_ONLY = arcpy.GetParameterAsText(4) # Boolean result received as text
 
 # Tool Parameters
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
-REQUIRED_FIELDS = ['KEYFEATURES', 'KEYFEATURES_BUFFER_DIST']
-REQUIRED_FIELD = "KEYFEATURES" # Which field must we filter on and check for?
-KEYFEATURECLASS_LIST = [] # Empty list for the feature classes to process
-KEYFEATURELAYER_LIST = [] # Empty list to store resulting feature layers
+REQUIRED_FIELDS = ['RIVERS', 'RIVERS_BUFFER_DIST']
+REQUIRED_FIELD = "RIVERS" # Which field must we filter on and check for?
+RIVERSFEATCLASS_LIST = [] # Empty list that will store the feature classes to process
+RIVERSFEATLAYER_LIST = [] # Empty list that will store feature layers
 # Append the Meters qualifier required for the buffer distance parameter
 BUFFER_DISTM = BUFFER_DIST + " Meters"
 COUNTER = 0
@@ -138,7 +137,7 @@ BACKUPCOUNT = 10
 # Change this variable to a unique identifier for each script it runs in.
 # Cannot use LOGGER.findCaller(), as we're calling from an embedded script in
 # the Python toolbox.
-LOGSTAMP = "AddKeyFeatures" # Identifies the source of the log entries
+LOGSTAMP = "AddRivers" # Identifies the source of the log entries
 LOGGER = logging.getLogger(LOGSTAMP)
 HANDLER = ArcPyLogHandler(LOGFILE, MAXBYTES, BACKUPCOUNT)
 FORMATTER = logging.Formatter("%(asctime)s %(name)-15s %(levelname)-8s %(message)s")
@@ -180,33 +179,33 @@ try:
 
 	#Build the list with the feature classes that will be used
 	# We need at least one FC to work with, check first if it has content
-	if int(arcpy.GetCount_management(KEYFEATURES_FC1)[0]) == 0:
+	if int(arcpy.GetCount_management(RIVERS_FC1)[0]) == 0:
 		LOGGER.error("{0} has no features. Please use a feature class that \
-					   contains data.".format(KEYFEATURES_FC1))
+					   contains data.".format(RIVERS_FC1))
 		raise arcpy.ExecuteError
 	else:
-		KEYFEATURECLASS_LIST.append(KEYFEATURES_FC1)
+		RIVERSFEATCLASS_LIST.append(RIVERS_FC1)
 
 	#First check if FC2 was passed in to the script before we check if it is empty
-	if len(KEYFEATURES_FC2) > 1:
-		if int(arcpy.GetCount_management(KEYFEATURES_FC2)[0]) == 0:
+	if len(RIVERS_FC2) > 1:
+		if int(arcpy.GetCount_management(RIVERS_FC2)[0]) == 0:
 			LOGGER.error("{0} has no features. Please use a feature class that \
-						   contains data.".format(KEYFEATURES_FC2))
+						   contains data.".format(RIVERS_FC2))
 			raise arcpy.ExecuteError
 		else:
-			KEYFEATURECLASS_LIST.append(KEYFEATURES_FC2)
+			RIVERSFEATCLASS_LIST.append(RIVERS_FC2)
 
 	# Compare the spatial references of the input data sets, unless the user
 	# actively chooses not to do so.
 	LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
 	if CHECK_PROJ == 'true':
-		#LOGGER.info(SOURCE_FC)
+		#LOGGER.info(TARGET_FC)
 		LIST_FC = [] # Emtpy list to store FC
 		# Add spatial references of all items
 		LIST_FC.append(get_projection(SOURCE_FC))
-		LIST_FC.append(get_projection(KEYFEATURES_FC1))
-		if len(KEYFEATURES_FC2) > 1:
-			LIST_FC.append(get_projection(KEYFEATURES_FC2))
+		LIST_FC.append(get_projection(RIVERS_FC1))
+		if len(RIVERS_FC2) > 1:
+			LIST_FC.append(get_projection(RIVERS_FC2))
 		LOGGER.debug("The list of spatial references to check is:")
 		LOGGER.debug(LIST_FC)
 		LOGGER.info("Comparing spatial references of the data sets")
@@ -225,7 +224,7 @@ try:
 	FIELDLIST = REQUIRED_FIELDS
 	LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
 
-	arcpy.AddMessage("Starting with Key Features Proximity Analysis")
+	arcpy.AddMessage("Starting with River/Water Basins Proximity Analysis")
 	START_TIME = time.time()
 
 	# Get the total number of records to process
@@ -237,15 +236,16 @@ try:
 		LOGGER.warning("The Hazard Areas FC does not contain any features.")
 		raise arcpy.ExecuteError
 
-	#Create feature layers out of Key Features FCs
+	#Create feature layers out of Infrastructure FC
 	LIST_COUNT = 0
-	for item in KEYFEATURECLASS_LIST:
+	for item in RIVERSFEATCLASS_LIST:
 		LIST_COUNT += 1
 		# Dynamically generate a name for the Feature layer
 		itemFlayerName = "Flayer_" + str(LIST_COUNT)
-		LOGGER.debug("Adding Feature Layer: " + itemFlayerName)
+		#arcpy.AddMessage("Adding Feature Layer: " + itemFlayerName)
 		arcpy.MakeFeatureLayer_management(item, itemFlayerName)
-		KEYFEATURELAYER_LIST.append(itemFlayerName)
+		RIVERSFEATLAYER_LIST.append(itemFlayerName)
+		#arcpy.AddMessage(listInfraFeatLayer)
 
 	LOGGER.info("Starting with the hazards area processing")
 	with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, QRY_FILTER) as cursor:
@@ -254,58 +254,59 @@ try:
 			COUNTER += 1
 			pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) *100
 			LOGGER.info("Processing OID " + str(row[0]) +
-						", with KEYFEATURES grading of "+ str(row[2]) +
-						". Feature " + str(COUNTER) + " of " +
-						str(RECORD_COUNT) + " or " + str(pctDone) + " %")
+							 ", with RIVERS grading of "+ str(row[2]) +
+							 ". Feature " + str(COUNTER) + " of " +
+							 str(RECORD_COUNT) + " or " + str(pctDone) + " %")
 
-			# Iterate over items in key features list and tally up the total
+			# Now loop over items in Rivers list and tally up the total
 			# Select the current feature from original Hazard FC
 			arcpy.SelectLayerByAttribute_management("inputHazard",
 													"NEW_SELECTION",
 													"OBJECTID = " + str(row[0]))
 
-			# Initialize the counter, with local scope, to zero
-			TOTAL_KEY_ITEMS = 0
-			# Now loop through INFRASTRUCTURE feature layers and intersect
+			# Initialise the COUNTER, with its local scope, to zero
+			TOTAL_RIVER_ITEMS = 0
+			# Now loop through RIVERS feature layers and intersect
 			# with the selected feature to calculate the total
-			for fc in KEYFEATURELAYER_LIST:
-				LOGGER.debug("Now processing feature Layer : " + fc)
+			for fc in RIVERSFEATLAYER_LIST:
+				LOGGER.debug("Now processing Feature Layer : " + fc)
 				# Takes longer due to the buffering done as part of each query.
 				# But faster than clipping source and using that.
 				TEMP = arcpy.SelectLayerByLocation_management(fc,
-															  "WITHIN_A_DISTANCE_GEODESIC",
-															  "inputHazard",
-															  BUFFER_DISTM,
-															  "")
+																	  "WITHIN_A_DISTANCE_GEODESIC",
+																	  "inputHazard",
+																	  BUFFER_DISTM,
+																	  "")
 				# Count the rows and add it to the COUNTER
-				TOTAL_KEY_ITEMS += int(arcpy.GetCount_management(TEMP).getOutput(0))
+				TOTAL_RIVER_ITEMS += int(arcpy.GetCount_management(TEMP).getOutput(0))
 
-			LOGGER.debug("TOTAL_KEY_ITEMS is: " + str(TOTAL_KEY_ITEMS))
-			# Update the row with the key features sum
+
+			LOGGER.debug("TOTAL_RIVER_ITEMS is: " + str(TOTAL_RIVER_ITEMS))
+			# Update the row with the population sum
 			# Cast to integer to ensure we deal with integer values
-			TOTAL_KEY_ITEMS = int(TOTAL_KEY_ITEMS)
-			LOGGER.debug("FINAL TOTAL_KEY_ITEMS is: " + str(TOTAL_KEY_ITEMS))
+			TOTAL_RIVER_ITEMS = int(TOTAL_RIVER_ITEMS)
 
-			# Calculate the grading. A case statement would have been nice to have.
-			if TOTAL_KEY_ITEMS == 0:
-				gradeKeyFeatures = 0
-			elif TOTAL_KEY_ITEMS == 1:
-				gradeKeyFeatures = 1
-			elif TOTAL_KEY_ITEMS == 2:
-				gradeKeyFeatures = 2
+			# Calculate the grading. A case statement would have been handy.
+			if TOTAL_RIVER_ITEMS == 0:
+				gradeRivers = 0
+			elif TOTAL_RIVER_ITEMS == 1:
+				gradeRivers = 1
+			elif TOTAL_RIVER_ITEMS == 2:
+				gradeRivers = 2
 			else:
-				gradeKeyFeatures = 3
+				gradeRivers = 3
 
-			arcpy.AddMessage("KEYFEATURES grading: " + str(gradeKeyFeatures))
-			# Assign the new value to the KeyFeatures field
-			row[2] = gradeKeyFeatures
-			# Assign the buffer distance to the Key Features buffer distance field
+			arcpy.AddMessage("River/Water Basin grading: " + str(gradeRivers))
+			# Assign the new value to the RIVERS field
+			row[2] = gradeRivers
+			# Assign the buffer distance to the Rivers buffer distance field
 			row[3] = BUFFER_DIST
 			cursor.updateRow(row)
+
 	STOP_TIME = time.time()
 	LOGGER.info("Total execution time in seconds = " +
-				str(int(STOP_TIME - START_TIME)) + " and in minutes = " +
-				str(int(STOP_TIME - START_TIME) / 60))
+				str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
+				str(int(STOP_TIME-START_TIME)/60))
 
 finally:
 	# Shut down logging after script has finished running.
