@@ -173,11 +173,17 @@ try:
 							 Please use the correct feature class.")
 			raise arcpy.ExecuteError
 
-	# We need at least one FC to work with, check first if it has content
-	if int(arcpy.GetCount_management(POP_RASTER)[0]) == 0:
-		LOGGER.error("{0} has no features. Please use a feature class that \
-					   contains data.".format(POP_RASTER))
-		raise arcpy.ExecuteError
+	# Check if the raster layer has any NoData before we start
+	# Adapted from https://geonet.esri.com/message/487616#comment-520588
+	if int(arcpy.GetRasterProperties_management(POP_RASTER, "ANYNODATA").
+		   getOutput(0)) == 1:
+		if int(arcpy.GetRasterProperties_management(POP_RASTER, "ALLNODATA").
+		   getOutput(0)) == 1:
+			LOGGER.error("All cells are NoData in {0}".format(POP_RASTER))
+			LOGGER.error("Please use a raster layer that contains data.")
+			raise arcpy.ExecuteError
+	else:
+		LOGGER.debug("The raster is without NoData")
 
 	# Compare the spatial references of the input data sets, unless the user
 	# actively chooses not to do so.
@@ -201,35 +207,42 @@ try:
 	# first step, i.e. INSIDE_X and INSIDE_Y
 	FC_DESC = arcpy.Describe(TARGET_FC)
 	if FC_DESC.shapeType == "Polygon":
-	    LOGGER.info("POLYGON feature class detected. Proceeding.")
-	    FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
+		LOGGER.info("POLYGON feature class detected. Proceeding.")
+		FIELDLIST = ['OBJECTID', 'SHAPE@', REQUIRED_FIELDS]
 	else:
-		LOGGER.error("Unsupported shape type detected. Please use a \
-	feature class with a POLYGON shape type")
+		LOGGER.error("Unsupported shape type detected")
 		raise arcpy.ExecuteError
 
 	LOGGER.info("Starting the Population Hazard Impact analysis")
 	START_TIME = time.time()
 
-	arcpy.MakeFeatureLayer_management(POP_RASTER, "inputPop", QRY_FILTER)
+	# Get the total number of records to process
+	# See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
+	COUNT_RECORDS = 0
+	LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
 	arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
-	RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-	#arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
+	arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+	COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+	# Destroy the temporary table
+	arcpy.Delete_management("tableViewHazards")
+	LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
-	with arcpy.da.UpdateCursor(TARGET_FC, ['OBJECTID', 'POPULATION',
-										   'POPULATION_BUFFER_DIST'],
-							   QRY_FILTER) as cursor:
+	if COUNT_RECORDS == 0:
+		LOGGER.error("The feature class does not contain any features.")
+		raise arcpy.ExecuteError
+
+	COUNTER = 0
+
+	with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
-			#Loop through HazardBuffer FC
+			#Loop through Hazard Areas FC
 			COUNTER += 1
-			# Convert to decimal
-			# See https://docs.python.org/2.7/library/decimal.html
-			pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) * 100
+			pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) * 100
 			arcpy.AddMessage("Processing OID " + str(row[0]) +
-							 ", with POPULATION of "+ str(row[1]) + ". Feature " +
-							 str(COUNTER) + " of " + str(RECORD_COUNT) +
+							 ", with POPULATION of "+ str(row[2]) + ". Feature " +
+							 str(COUNTER) + " of " + str(COUNT_RECORDS) +
 							 " or " + str(pctDone) + " %")
-
+			# HIERSO!!!
 			# Select the current feature from original Hazard FC
 			arcpy.SelectLayerByAttribute_management("inputHazard",
 													"NEW_SELECTION",
