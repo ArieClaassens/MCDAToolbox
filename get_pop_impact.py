@@ -202,16 +202,14 @@ try:
 			# Terminate the script
 			raise arcpy.ExecuteError
 
-	# Determine if we are working with a POINT or POLYGON shape type and adjust
-	# the fields list to use the inside centroid X and Y fields added in the
-	# first step, i.e. INSIDE_X and INSIDE_Y
-	FC_DESC = arcpy.Describe(TARGET_FC)
-	if FC_DESC.shapeType == "Polygon":
-		LOGGER.info("POLYGON feature class detected. Proceeding.")
-		FIELDLIST = ['OBJECTID', 'SHAPE@', REQUIRED_FIELDS]
-	else:
-		LOGGER.error("Unsupported shape type detected")
-		raise arcpy.ExecuteError
+	# Adjust the fields list to include the Object ID and Shape data
+	LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
+	# Insert the fields at the start of the list to obtain the required
+	# field ordering
+	REQUIRED_FIELDS.insert(0,'SHAPE@')
+	REQUIRED_FIELDS.insert(0,'OBJECTID')
+	FIELDLIST = REQUIRED_FIELDS
+	LOGGER.info("The FIELDLIST is now {0}".format(FIELDLIST))
 
 	LOGGER.info("Starting the Population Hazard Impact analysis")
 	START_TIME = time.time()
@@ -219,13 +217,12 @@ try:
 	# Get the total number of records to process
 	# See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
 	COUNT_RECORDS = 0
-	LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
 	arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
 	arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
 	COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
 	# Destroy the temporary table
 	arcpy.Delete_management("tableViewHazards")
-	LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
+	LOGGER.info("Hazard Area feature count: " + str(COUNT_RECORDS))
 
 	if COUNT_RECORDS == 0:
 		LOGGER.error("The feature class does not contain any features.")
@@ -235,51 +232,40 @@ try:
 
 	with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
+			totPop = 0
 			#Loop through Hazard Areas FC
 			COUNTER += 1
 			pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) * 100
 			arcpy.AddMessage("Processing OID " + str(row[0]) +
-							 ", with POPULATION of "+ str(row[2]) + ". Feature " +
-							 str(COUNTER) + " of " + str(COUNT_RECORDS) +
-							 " or " + str(pctDone) + " %")
+							 " with POPULATION IMPACT of "+ str(row[2]) +
+							 ". Feature " + str(COUNTER) + " of " +
+							 str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
 			# HIERSO!!!
-			# Select the current feature from original Hazard FC
+			# Select the current feature from Hazard Area FC
 			arcpy.SelectLayerByAttribute_management("inputHazard",
 													"NEW_SELECTION",
 													"OBJECTID = " + str(row[0]))
 
-			# Select all features in the population feature class that intersects
+			# Select all features in the population raster layer that intersects
 			# with the current hazard feature
 			# Takes longer due to the buffering done as part of each query.
-			outputPop = arcpy.SelectLayerByLocation_management("inputPop",
-															   "WITHIN_A_DISTANCE_GEODESIC",
-															   "inputHazard",
-															   BUFFER_DISTM, "")
-			totPop = 0
-			for row2 in outputPop:
-				# display OIDs of selected features
-				#arcpy.AddMessage(row2.getSelectionSet())
+			arcpy.SelectLayerByLocation_management(POP_RASTER, "WITHIN_A_DISTANCE_GEODESIC", "inputHazard", BUFFER_DISTM, "NEW_SELECTION")
 
-				# http://desktop.arcgis.com/en/arcmap/10.3/analyze/arcpy-data-access/featureclasstonumpyarray.htm
-				arr = arcpy.da.FeatureClassToNumPyArray(row2, "grid_code",
-														skip_nulls=True)
-				#arcpy.AddMessage(arr["grid_code"].sum())
-				totPop += arr["grid_code"].sum()
+			totPop = int(arcpy.GetCount_management(POP_RASTER)[0])
+			LOGGER.info("totPop is : ".format(totPop))
 
-			# Update the row with the population sum
-			arcpy.AddMessage("totPop is: " + str(totPop))
-			# Round floating number and cast as integer
-			arcpy.AddMessage("Potential Pop affected by Hazard:" +
+			# Round the floating number and cast as integer
+			LOGGER.info("Potential Pop affected by Hazard:" +
 							 str(int(round(totPop))))
 			# Assign the new value to the POPULATION field
-			row[1] = int(round(totPop))
+			row[3] = int(round(totPop))
 			# Assign the buffer distance to the POPULATION buffer distance field
-			row[2] = BUFFER_DIST
+			row[4] = BUFFER_DIST
 			cursor.updateRow(row)
-			arcpy.AddMessage("----------")
+
 
 	STOP_TIME = time.time()
-	arcpy.AddMessage("Total execution time in seconds = " +
+	LOGGER.info("Total execution time in seconds = " +
 					 str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
 					 str(int(STOP_TIME-START_TIME)/60))
 
