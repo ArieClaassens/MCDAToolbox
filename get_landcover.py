@@ -103,7 +103,6 @@ def compare_list_items(checklist):
 
     return mismatch
 
-# Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)

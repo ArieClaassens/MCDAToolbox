@@ -1,3 +1,5 @@
+# Mixed use of SOURCE_FC and TARGET_FC for Hazard Areas FC. Standardise across all the scripts
+
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
 
 # WHERE script checks for all entries in REQUIRED_FIELDS, the REQUIRED_FIELD must change to FILTER_FIELD!!!!
@@ -5,6 +7,8 @@
 # Check that all script configs specify the SOURCE_FC Field as Hazard Areas Feature Class.
 
 # Add a filter in script on parameters - define the specific feature class types that are allowed as input, e.g. POLYGON
+
+# Add Pop Impact script that allows user to work with raster data (currently using vector feature class) ?
 
 # Toolbox tools descriptions: http://resources.arcgis.com/en/help/main/10.1/index.html#/A_quick_tour_of_documenting_tools_and_toolboxes/001500000014000000/
 # Look at the Scripting explanation section for each parameter!!!!
@@ -86,6 +90,10 @@ arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.g
 # DONE
 ########################====================================================================
 ############################################################################################
+
+#http://help.arcgis.com/en/arcgisdesktop/10.0/help/index.html#/Extract_by_Mask/009z0000002n000000/
+#https://blogs.esri.com/esri/arcgis/2013/05/20/are-you-sure-intersect-is-the-right-tool-for-the-job/ - Nope it isn't
+
 # Sanity checks - schema lock on TARGET_FC, feature count on TARGET_FC,
 # extensions availability, etc. before processing starts
 

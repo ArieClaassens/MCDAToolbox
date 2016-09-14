@@ -167,51 +167,58 @@ try:
 
 	# Check if the target feature class has all of the required attribute fields.
 	for checkfield in REQUIRED_FIELDS:
-		if not fieldexist(TARGET_FC, checkfield):
+		if not fieldexist(SOURCE_FC, checkfield):
 			LOGGER.debug("Check for field: " + checkfield)
 			LOGGER.error("The field "+ checkfield +" does not exist. \
 							 Please use the correct feature class.")
 			raise arcpy.ExecuteError
 
+
 	# We need at least one FC to work with, check first if it has content
-	if int(arcpy.GetCount_management(POP_RASTER)[0]) == 0:
+	if int(arcpy.GetCount_management(POP_FC1)[0]) == 0:
 		LOGGER.error("{0} has no features. Please use a feature class that \
-					   contains data.".format(POP_RASTER))
+					   contains data.".format(POP_FC1))
 		raise arcpy.ExecuteError
 
 	# Compare the spatial references of the input data sets, unless the user
 	# actively chooses not to do so.
 	LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
 	if CHECK_PROJ == 'true':
+		#LOGGER.info(TARGET_FC)
 		LIST_FC = [] # Emtpy list to store FC
 		# Add spatial references of all items
 		LIST_FC.append(get_projection(TARGET_FC))
-		LIST_FC.append(get_projection(POP_RASTER))
+		LIST_FC.append(get_projection(LANDCOVER_RASTER))
 		LOGGER.debug("The list of spatial references to check is:")
 		LOGGER.debug(LIST_FC)
 		LOGGER.info("Comparing spatial references of the data sets")
 		# Check for mismatching spatial references
 		MISMATCHED = compare_list_items(LIST_FC)
 		if MISMATCHED:
-			# Terminate the script
-			raise arcpy.ExecuteError
+			# Terminate the main thread
+			# See https://docs.python.org/2/library/sys.html#sys.exit
+			sys.exit(0)
 
 	# Determine if we are working with a POINT or POLYGON shape type and adjust
 	# the fields list to use the inside centroid X and Y fields added in the
 	# first step, i.e. INSIDE_X and INSIDE_Y
 	FC_DESC = arcpy.Describe(TARGET_FC)
-	if FC_DESC.shapeType == "Polygon":
-	    LOGGER.info("POLYGON feature class detected. Proceeding.")
-	    FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
+	if FC_DESC.shapeType == "Point":
+		LOGGER.info("POINT feature class detected. Proceeding.")
+		FIELDLIST = ['OBJECTID', 'SHAPE@X', 'SHAPE@Y', REQUIRED_FIELD]
+	elif FC_DESC.shapeType == "Polygon":
+		LOGGER.info("POLYGON feature class detected. Proceeding.")
+		FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
 	else:
 		LOGGER.error("Unsupported shape type detected. Please use a \
-	feature class with a POLYGON shape type")
+	feature class with a POINT or POLYGON shape type")
 		raise arcpy.ExecuteError
 
-	LOGGER.info("Starting the Population Hazard Impact analysis")
+	LOGGER.info("Starting the Population Impact calculations")
 	START_TIME = time.time()
 
-	arcpy.MakeFeatureLayer_management(POP_RASTER, "inputPop", QRY_FILTER)
+	arcpy.MakeFeatureLayer_management(POP_FC1, "inputPop", QRY_FILTER)
+
 	arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
 	RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
 	#arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))

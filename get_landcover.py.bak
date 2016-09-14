@@ -1,6 +1,6 @@
 #------------------------------------------------------------------------------
 # Name:        getLandCover
-# Purpose:     Calculates the Land Cover value for each feature.
+# Purpose:     Calculates the Land Cover value for each hazard area
 #
 # Author:      Arie Claassens
 #
@@ -10,26 +10,21 @@
 #------------------------------------------------------------------------------
 
 """
-Calculates the LandCover value for the Hazards Feature Class using the
-LandCover raster with the Get Cell Value Spatial Analysis Tool
+Calculates the LandCover value for the Hazard Area Feature Class using the
+LandCover raster with the Get Cell Value Spatial Analysis Tool, based on the
+inside centroid X and Y coordinates
 """
 
-# If it is a polygon, we need to find the centroid and use that for the aspect
-########################################################
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
-#from datetime import datetime, date
-import time # For timing purposes
-from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
+import time
+from decimal import Decimal, getcontext #For the progress counter
 import arcpy
 
-########################################################
 # Functions and classes
-# Adapted from http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
+# Adapted from:
+# http://gis.stackexchange.com/questions/135920/arcpy-logging-error-messages
 class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
     """
     Custom logging class that bounces messages to the arcpy tool window and
@@ -41,7 +36,11 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
         """
         try:
             msg = record.msg.format(record.args)
-        except:
+        #except:
+        except Exception as inst:
+            # Log the exception type and all error messages returned
+            arcpy.AddError(type(inst))
+            arcpy.AddError(arcpy.GetMessages())
             msg = record.msg
 
         if record.levelno >= logging.ERROR:
@@ -53,12 +52,12 @@ class ArcPyLogHandler(logging.handlers.RotatingFileHandler):
 
         super(ArcPyLogHandler, self).emit(record)
 
-# Adapted from http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python/
+# Adapted from:
+# http://bjorn.kuiper.nu/2011/04/21/tips-tricks-fieldexists-for-arcgis-10-python
 def fieldexist(featureclass, fieldname):
     """
-    Test for the existence of fieldname in featureclass.
-    Input: featureclass to check and fieldname to look for.
-    Returns: True if the field exists, False if it does not.
+    Test for the existence of fieldname in featureclass. Returns True if the
+    field exists and False if it does not.
     """
     fieldlist = arcpy.ListFields(featureclass, fieldname)
     fieldcount = len(fieldlist)
@@ -66,12 +65,11 @@ def fieldexist(featureclass, fieldname):
 
 def get_projection(featureclass):
     """
-    Find and return the spatial reference name of a feature class.
+    Find and return the full spatial reference of a feature class
     """
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
     # discrepancies with differing central meridians, for example.
-    #proj = description.SpatialReference.Name
     proj = description.SpatialReference.exporttostring()
     return proj
 
@@ -94,18 +92,17 @@ def compare_list_items(checklist):
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
-                LOGGER.warning("The check and current item mismatch.")
+                LOGGER.debug("The check and current item mismatch")
                 break # Break out of the for loop. no further testing needed
 
     LOGGER.info("Is there a spatial reference mismatch? " + str(mismatch))
     if mismatch:
-        LOGGER.critical("Spatial reference mismatch between the feature classes.")
+        LOGGER.critical("Spatial reference mismatch detected.")
     else:
         LOGGER.info("Spatial references of all the feature classes match.")
 
     return mismatch
 
-########################################################
 # Global Parameters
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
@@ -119,14 +116,6 @@ UPDATE_ONLY = arcpy.GetParameterAsText(5) # Boolean result received as text
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELD = "LANDCOVER" # Which field must we filter on and check for?
-
-# Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
-else:
-    QRY_FILTER = ""
-LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 # Tool configuration:
 # Set up the logging parameters and inform the user
@@ -150,11 +139,19 @@ LOGGER.debug("------- START LOGGING-----------")
 # window, otherwise we will log it to the log file too.
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
-###############################################################################
+# Define the query filter
+# Should we only update or process all records? True if selected by the user
+if not UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+else:
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
+
 # Put everything in a try/finally statement, so that we can close the logger
-# even if script bombs out or we call an execution error along the line
+# even if the script bombs out or we raise an execution error along the line
 try:
     # Sanity checks:
+
     # Check if the target feature class has any features before we start
     if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \
@@ -168,16 +165,17 @@ try:
                          Please use the correct Hazard feature class.")
         raise arcpy.ExecuteError
 
-    # Check if the raster layer has any features before we start
-    if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
+    # Check if the raster layer has any NoData before we start
+    # Adapted from https://geonet.esri.com/message/487616#comment-520588
+    if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
-        LOGGER.error("{0} has no features. Please use a raster layer that \
-                      already contains the required features and attributes." \
-                      .format(LANDCOVER_RASTER))
-        raise arcpy.ExecuteError
-
-    # Check if we have the required extension, otherwise stop the script.
-    # Get Cell value is a standard tool in all ArcMap license levels.
+        if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
+           getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in {0}".format(LANDCOVER_RASTER))
+            LOGGER.error("Please use a raster layer that contains data.")
+            raise arcpy.ExecuteError
+    else:
+        LOGGER.debug("The raster is without NoData")
 
     # Compare the spatial references of the input data sets, unless the user
     # actively chooses not to do so.
@@ -194,54 +192,36 @@ try:
         # Check for mismatching spatial references
         MISMATCHED = compare_list_items(LIST_FC)
         if MISMATCHED:
-            # Terminate the main thread
-            # See https://docs.python.org/2/library/sys.html#sys.exit
-            sys.exit(0)
-
-    # Identify NoData value for the Raster.
-    # WHAT DO WE DO WITH IT? SUBSTITUE A USER-SUPPLIED VALUE?!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    # See http://gis.stackexchange.com/questions/111449/how-to-access-raster-nodata-value
-    RASTER_OBJ = arcpy.Raster(LANDCOVER_RASTER)
-    NODATA = RASTER_OBJ.noDataValue
-    LOGGER.debug("NODATA is: "+str(NODATA))
+            # Terminate the script
+            raise arcpy.ExecuteError
 
     # Determine if we are working with a POINT or POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
     FC_DESC = arcpy.Describe(TARGET_FC)
-    if FC_DESC.shapeType == "Point":
-        LOGGER.info("POINT feature class detected. Proceeding.")
-        FIELDLIST = ['OBJECTID', 'SHAPE@X', 'SHAPE@Y', REQUIRED_FIELD]
-    elif FC_DESC.shapeType == "Polygon":
+    if FC_DESC.shapeType == "Polygon":
         LOGGER.info("POLYGON feature class detected. Proceeding.")
         FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
     else:
-        LOGGER.error("Unsupported shape type detected. Please use a \
-    feature class with a POINT or POLYGON shape type")
+        LOGGER.error("Unsupported shape type detected.")
         raise arcpy.ExecuteError
 
     LOGGER.info("Starting the Land Cover calculations")
     START_TIME = time.time()
 
-    # Get the total number of records - how long to create a feature layer, just
-    # so that we can count the records? Is there a better way?
+    # Get the total number of records to process
     # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
     COUNT_RECORDS = 0
     LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-    #arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
-    #arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
-    #COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
+    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
+    COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
     # Destroy the temporary table
-    #arcpy.Delete_management("tableViewHazards")
-    with arcpy.da.SearchCursor(TARGET_FC, ["OBJECTID"], QRY_FILTER) as countcursor:
-        for row in countcursor:
-            COUNT_RECORDS += 1
-            LOGGER.debug("COUNT_RECORDS is now: " + str(COUNT_RECORDS))
-
+    arcpy.Delete_management("tableViewHazards")
     LOGGER.info("COUNT_RECORDS END: " + str(COUNT_RECORDS))
 
     if COUNT_RECORDS == 0:
-        LOGGER.error("The Hazards FC does not contain any features to process.")
+        LOGGER.error("The feature class does not contain any features.")
         raise arcpy.ExecuteError
 
     COUNTER = 0
@@ -256,8 +236,9 @@ try:
                         ". Feature " + str(COUNTER) + " of " +
                         str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
             # Print the coordinate tuple
-            #print(str(row[1]) + " " + str(row[2]))
-            # Set a default value to cater for NoData returned by GetCellValue
+            LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
+            # Set an initial default value
+            LOGGER.debug("Setting intial default value of -2")
             cellvalue = -2
             # Get the Cell Value from the LandCover Raster
             try:
@@ -266,17 +247,14 @@ try:
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = int(cellresult.getOutput(0))
-                #LOGGER.info(row[3])
-                # If the cell does not have a value, set a value to add to TARGET_FC
-                #if (row[3] == str(NODATA)):
-                #   row[3] = -2
+                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
 
             except Exception as err:
                 LOGGER.error(err.args[0])
 
             row[3] = cellvalue
-            LOGGER.debug("Cell Value is " + str(row[3]))
             cursor.updateRow(row)
+            LOGGER.debug("The land cover value is now: {0}".format(row[3]))
 
     # Calculate the execution time
     STOP_TIME = time.time()
