@@ -257,7 +257,7 @@ try:
     REQUIRED_FIELDS.insert(0,'SHAPE@')
     REQUIRED_FIELDS.insert(0,'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.info(FIELDLIST)
+    LOGGER.debug("FIELDLIST is now: {0}".format(FIELDLIST))
 
     LOGGER.info("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
