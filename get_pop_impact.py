@@ -13,6 +13,8 @@
 """
 Calculate the total population potentially affected by virtue of being
 located within a predefined buffer distance from the hazard point or area.
+Uses the Population vector point feature class created from the population
+raster layer earlier.
 """
 
 #Import libraries
@@ -108,7 +110,7 @@ LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
 TARGET_FC = arcpy.GetParameterAsText(3)
-POP_RASTER = arcpy.GetParameterAsText(4)
+POP_FC = arcpy.GetParameterAsText(4)
 BUFFER_DIST = arcpy.GetParameterAsText(5) # buffer distance in meters
 UPDATE_ONLY = arcpy.GetParameterAsText(6) # Boolean result received as text
 
@@ -117,8 +119,6 @@ arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELDS = ['POPULATION', 'POPULATION_BUFFER_DIST']
 REQUIRED_FIELD = "POPULATION" # Which field must we filter on and check for?
-POPFEATCLASS_LIST = [] # Empty list that will store the feature classes to process
-POPFEATLAYER_LIST = [] # Empty list that will store feature layers
 # Append the Meters required for the buffer distance parameter
 BUFFER_DISTM = BUFFER_DIST + " Meters"
 COUNTER = 0
@@ -173,17 +173,12 @@ try:
 							 Please use the correct feature class.")
 			raise arcpy.ExecuteError
 
-	# Check if the raster layer has any NoData before we start
-	# Adapted from https://geonet.esri.com/message/487616#comment-520588
-	if int(arcpy.GetRasterProperties_management(POP_RASTER, "ANYNODATA").
-		   getOutput(0)) == 1:
-		if int(arcpy.GetRasterProperties_management(POP_RASTER, "ALLNODATA").
-		   getOutput(0)) == 1:
-			LOGGER.error("All cells are NoData in {0}".format(POP_RASTER))
-			LOGGER.error("Please use a raster layer that contains data.")
-			raise arcpy.ExecuteError
-	else:
-		LOGGER.debug("The raster is without NoData")
+	# Check if the population feature class has any features before we start
+	if int(arcpy.GetCount_management(POP_FC)[0]) == 0:
+		LOGGER.error("{0} has no features. Please use a feature class that \
+					  already contains the required features and attributes." \
+					  .format(POP_FC))
+		raise arcpy.ExecuteError
 
 	# Compare the spatial references of the input data sets, unless the user
 	# actively chooses not to do so.
@@ -192,7 +187,7 @@ try:
 		LIST_FC = [] # Emtpy list to store FC
 		# Add spatial references of all items
 		LIST_FC.append(get_projection(TARGET_FC))
-		LIST_FC.append(get_projection(POP_RASTER))
+		LIST_FC.append(get_projection(POP_FC))
 		LOGGER.debug("The list of spatial references to check is:")
 		LOGGER.debug(LIST_FC)
 		LOGGER.info("Comparing spatial references of the data sets")
@@ -214,22 +209,32 @@ try:
 	LOGGER.info("Starting the Population Hazard Impact analysis")
 	START_TIME = time.time()
 
-	# Get the total number of records to process
+	# Get the total number of records to process after creating feature layer
 	# See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
 	COUNT_RECORDS = 0
+	LOGGER.debug("Creating Hazard Area Feature Layer")
 	arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
 	arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
 	COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
 	# Destroy the temporary table
-	arcpy.Delete_management("tableViewHazards")
+	arcpy.Delete_management("tableViewTargetFC")
 	LOGGER.info("Hazard Area feature count: " + str(COUNT_RECORDS))
 
 	if COUNT_RECORDS == 0:
 		LOGGER.error("The feature class does not contain any features.")
 		raise arcpy.ExecuteError
 
-	COUNTER = 0
+	# Get the total number of population features after creating feature layer
+	LOGGER.info("Creating Population Feature Layer")
+	arcpy.MakeFeatureLayer_management(POP_FC, "popFeatures")
+	arcpy.MakeTableView_management("popFeatures", "tableViewPopFeatures", QRY_FILTER)
+	COUNT_POP_RECORDS = int(arcpy.GetCount_management("tableViewPopFeatures").getOutput(0))
+	# Destroy the temporary table
+	arcpy.Delete_management("tableViewPopFeatures")
+	LOGGER.info("Population feature count: " + str(COUNT_RECORDS))
 
+	COUNTER = 0
+	LOGGER.info("Starting to iterate over DHA using UpdateCursor")
 	with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
 			totPop = 0
@@ -241,17 +246,26 @@ try:
 							 ". Feature " + str(COUNTER) + " of " +
 							 str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
 			# HIERSO!!!
+
+			# How many features did we select?
+			selected = arcpy.GetCount_management("inputHazard").getOutput(0)
+			LOGGER.error("NUMBER OF DHA FEATURES BEFORE SELECTION: ".format(selected))
+
 			# Select the current feature from Hazard Area FC
 			arcpy.SelectLayerByAttribute_management("inputHazard",
 													"NEW_SELECTION",
-													"OBJECTID = " + str(row[0]))
+													"OBJECTID = {0}".format(row[0]))
+
+			# How many features did we select?
+			selected = arcpy.GetCount_management("inputHazard").getOutput(0)
+			LOGGER.error("NUMBER OF DHA FEATURES SELECTED:  ".format(selected))
 
 			# Select all features in the population raster layer that intersects
 			# with the current hazard feature
 			# Takes longer due to the buffering done as part of each query.
-			arcpy.SelectLayerByLocation_management(POP_RASTER, "WITHIN_A_DISTANCE_GEODESIC", "inputHazard", BUFFER_DISTM, "NEW_SELECTION")
+			arcpy.SelectLayerByLocation_management("popFeatures", "WITHIN_A_DISTANCE_GEODESIC", "inputHazard", BUFFER_DISTM, "NEW_SELECTION")
 
-			totPop = int(arcpy.GetCount_management(POP_RASTER)[0])
+			totPop = int(arcpy.GetCount_management("popFeatures")[0])
 			LOGGER.info("totPop is : ".format(totPop))
 
 			# Round the floating number and cast as integer
