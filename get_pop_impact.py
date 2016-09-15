@@ -182,7 +182,7 @@ try:
 
 	# Compare the spatial references of the input data sets, unless the user
 	# actively chooses not to do so.
-	LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
+	LOGGER.debug("Check for spatial reference mismatches? : " + CHECK_PROJ)
 	if CHECK_PROJ == 'true':
 		LIST_FC = [] # Emtpy list to store FC
 		# Add spatial references of all items
@@ -204,20 +204,16 @@ try:
 	REQUIRED_FIELDS.insert(0,'SHAPE@')
 	REQUIRED_FIELDS.insert(0,'OBJECTID')
 	FIELDLIST = REQUIRED_FIELDS
-	LOGGER.info("The FIELDLIST is now {0}".format(FIELDLIST))
+	LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
 
 	LOGGER.info("Starting the Population Hazard Impact analysis")
 	START_TIME = time.time()
 
 	# Get the total number of records to process after creating feature layer
-	# See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
 	COUNT_RECORDS = 0
 	LOGGER.debug("Creating Hazard Area Feature Layer")
 	arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
-	arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
-	COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
-	# Destroy the temporary table
-	arcpy.Delete_management("tableViewTargetFC")
+	COUNT_RECORDS = int(arcpy.GetCount_management("inputHazard").getOutput(0))
 	LOGGER.info("Hazard Area feature count: " + str(COUNT_RECORDS))
 
 	if COUNT_RECORDS == 0:
@@ -227,54 +223,44 @@ try:
 	# Get the total number of population features after creating feature layer
 	LOGGER.info("Creating Population Feature Layer")
 	arcpy.MakeFeatureLayer_management(POP_FC, "popFeatures")
-	arcpy.MakeTableView_management("popFeatures", "tableViewPopFeatures", QRY_FILTER)
-	COUNT_POP_RECORDS = int(arcpy.GetCount_management("tableViewPopFeatures").getOutput(0))
-	# Destroy the temporary table
-	arcpy.Delete_management("tableViewPopFeatures")
-	LOGGER.info("Population feature count: " + str(COUNT_RECORDS))
+	COUNT_POP_RECORDS = int(arcpy.GetCount_management("popFeatures").getOutput(0))
+	LOGGER.info("Population feature count: " + str(COUNT_POP_RECORDS))
 
 	COUNTER = 0
 	LOGGER.info("Starting to iterate over DHA using UpdateCursor")
 	with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
-			totPop = 0
+			TOT_POP = 0
 			#Loop through Hazard Areas FC
-			COUNTER += 1
+			COUNTER += 1 # Start counter at 1, for human consumption
 			pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) * 100
 			arcpy.AddMessage("Processing OID " + str(row[0]) +
 							 " with POPULATION IMPACT of "+ str(row[2]) +
 							 ". Feature " + str(COUNTER) + " of " +
 							 str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
-			# HIERSO!!!
-
-			# How many features did we select?
-			selected = arcpy.GetCount_management("inputHazard").getOutput(0)
-			LOGGER.error("NUMBER OF DHA FEATURES BEFORE SELECTION: ".format(selected))
 
 			# Select the current feature from Hazard Area FC
 			arcpy.SelectLayerByAttribute_management("inputHazard",
 													"NEW_SELECTION",
 													"OBJECTID = {0}".format(row[0]))
 
-			# How many features did we select?
-			selected = arcpy.GetCount_management("inputHazard").getOutput(0)
-			LOGGER.error("NUMBER OF DHA FEATURES SELECTED:  ".format(selected))
-
 			# Select all features in the population raster layer that intersects
 			# with the current hazard feature
 			# Takes longer due to the buffering done as part of each query.
-			arcpy.SelectLayerByLocation_management("popFeatures", "WITHIN_A_DISTANCE_GEODESIC", "inputHazard", BUFFER_DISTM, "NEW_SELECTION")
+			arcpy.SelectLayerByLocation_management("popFeatures",
+												   "WITHIN_A_DISTANCE_GEODESIC",
+												   "inputHazard",
+												   BUFFER_DISTM, "NEW_SELECTION")
 
-			totPop = int(arcpy.GetCount_management("popFeatures")[0])
-			LOGGER.info("totPop is : ".format(totPop))
-
+			TOT_POP = int(arcpy.GetCount_management("popFeatures")[0])
 			# Round the floating number and cast as integer
-			LOGGER.info("Potential Pop affected by Hazard:" +
-							 str(int(round(totPop))))
+			TOT_POP = str(int(round(TOT_POP)))
+			LOGGER.info("Potential population affected is : {0}".format(TOT_POP))
+
 			# Assign the new value to the POPULATION field
-			row[3] = int(round(totPop))
+			row[2] = TOT_POP
 			# Assign the buffer distance to the POPULATION buffer distance field
-			row[4] = BUFFER_DIST
+			row[3] = BUFFER_DIST
 			cursor.updateRow(row)
 
 

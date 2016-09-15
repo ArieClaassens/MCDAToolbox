@@ -1,11 +1,11 @@
 #------------------------------------------------------------------------------
-# Name:        getPrimaryClusterLocation
+# Name:        calculateHazardsPerCell
 # Purpose:     Calculate the predominant location of hazard clusters inside
 #              the hazard areas.
 #
 # Author:      Arie Claassens
 #
-# Created:     August 2016
+# Created:     September 2016
 # Copyright:   (c) Arie Claassens 2016
 # License:     GNU GPL. View the LICENSE file.
 #------------------------------------------------------------------------------
@@ -259,16 +259,16 @@ try:
     FIELDLIST = REQUIRED_FIELDS
     LOGGER.info(FIELDLIST)
 
-    arcpy.AddMessage("Starting with the Hazards Count Analysis")
+    LOGGER.info("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 
     # Get the total number of records to process
     arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", FILTER_QUERY)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
-    arcpy.AddMessage("Total number of features: " + str(RECORD_COUNT))
+    LOGGER.info("Total number of hazard area features: " + str(RECORD_COUNT))
 
     if RECORD_COUNT == 0:
-        arcpy.AddError("The Hazard Areas FC does not contain any features.")
+        LOGGER.error("The Hazard Areas FC does not contain any features.")
         raise arcpy.ExecuteError
 
     #Create feature layers out of Hazards FC
@@ -280,9 +280,8 @@ try:
         #arcpy.AddMessage("Adding Feature Layer: " + itemFlayerName)
         arcpy.MakeFeatureLayer_management(item, itemFlayerName)
         HAZARDSLIST_FEATLAYER.append(itemFlayerName)
-        #arcpy.AddMessage(listInfraFeatLayer)
 
-    arcpy.AddMessage("Starting with the hazard areas processing....")
+    LOGGER.info("Starting with the hazard areas processing....")
 
     with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, FILTER_QUERY) as cursor:
         for row in cursor:
@@ -344,13 +343,13 @@ try:
 
             with arcpy.da.SearchCursor(FISHNET_FC, "SHAPE@") as cursor2:
                 for row2 in cursor2:
-                    LOGGER.debug("Processing fishnet feature class row {0}".format(fishnetCounter))
+                    LOGGER.debug("Processing cell {0}".format(fishnetCounter))
                     # Loop through the Hazards Feature layer list to find the
                     # total using the locally scope variable below
                     TOTAL_HAZARDS = 0
-                    LOGGER.info("Starting with hazards feature list processing")
+                    LOGGER.debug("Starting with hazards feature list processing")
                     for fc in HAZARDSLIST_FEATLAYER:
-                        LOGGER.info("  Processing hazard feature class: {0}".format(fc))
+                        LOGGER.debug("  Processing hazard feature class: {0}".format(fc))
                         # Filter the HAZARDS FC on the current hazard area so
                         # we only count hazards falling inside this hazard area
                         # DOES THIS PREVENT DOUBLE COUNTING IN OVERLAPPING DHA?
@@ -361,7 +360,7 @@ try:
                         arcpy.SelectLayerByLocation_management(fc, "WITHIN", row2[0])
                         CELL_RESULT = arcpy.GetCount_management(fc)
                         TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
-                        LOGGER.info("  TOTAL_HAZARDS is: {0}".format(TOTAL_HAZARDS))
+                        LOGGER.debug("  TOTAL_HAZARDS is: {0}".format(TOTAL_HAZARDS))
                         # Remove the filter on the HAZARDS FC
                         arcpy.SelectLayerByAttribute_management(fc,"CLEAR_SELECTION","")
 
@@ -414,7 +413,7 @@ try:
             arcpy.Delete_management(FISHNET_FC)
 
     STOP_TIME = time.time()
-    arcpy.AddMessage("Total execution time in seconds = " +
+    LOGGER.info("Total execution time in seconds = " +
                      str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
                      str(int(STOP_TIME-START_TIME)/60))
 
