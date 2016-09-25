@@ -236,7 +236,7 @@ try:
             LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
             # Set an initial default value
             LOGGER.debug("Setting initial default value of -180")
-            cellvalue = -180 # get a better placeholder value!!!
+            cellvalue = 0
             # Get the Cell Value from the SLOPE Raster
             try:
                 cellresult = arcpy.GetCellValue_management(SLOPE_RASTER,

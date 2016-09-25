@@ -13,7 +13,7 @@
 """
 Calculate the concentration of hazards in nine equal sized cells placed over
 each hazard area polygon by iterating over the hazards area, placing a fishnet
-of three rows and three columns over the hazard polygon. The tally the number
+of three rows and three columns over the hazard polygon. Then tally the number
 of hazards intersecting with the hazard area, and locating hazard clusters
 within the extent of the hazard area. Record the number of hazards found in each
 of the nine polygons, which then represent the SW, S, SE, W, CENTER, E, NW, N

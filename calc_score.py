@@ -262,15 +262,16 @@ TARGET_FC = arcpy.GetParameterAsText(3) # New FC to create with the user's input
 # need to create a table with the settings used to create the TARGET_FC?
 LOWSCORE_BREAKPOINT = int(arcpy.GetParameterAsText(4))  # Defines the low score breakpoint
 MEDIUMSCORE_BREAKPOINT = int(arcpy.GetParameterAsText(5)) # Defines the Medium score breakpoint
-LANDCOVER_WEIGHT = int(arcpy.GetParameterAsText(6))
-ASPECT_WEIGHT = int(arcpy.GetParameterAsText(7))
-INFRASTRUCTURE_WEIGHT = int(arcpy.GetParameterAsText(8))
-KEYFEATURES_WEIGHT = int(arcpy.GetParameterAsText(9))
-ACCIDENTS_WEIGHT = int(arcpy.GetParameterAsText(10))
-POI_WEIGHT = int(arcpy.GetParameterAsText(11))
-RIVERS_WEIGHT = int(arcpy.GetParameterAsText(12))
-SLOPE_WEIGHT = int(arcpy.GetParameterAsText(13))
-POPULATION_WEIGHT = int(arcpy.GetParameterAsText(14))
+BAREAREA_CODE = int(arcpy.GetParameterAsText(6)) # Defines the bare area land cover code
+LANDCOVER_WEIGHT = int(arcpy.GetParameterAsText(7))
+ASPECT_WEIGHT = int(arcpy.GetParameterAsText(8))
+INFRASTRUCTURE_WEIGHT = int(arcpy.GetParameterAsText(9))
+KEYFEATURES_WEIGHT = int(arcpy.GetParameterAsText(10))
+ACCIDENTS_WEIGHT = int(arcpy.GetParameterAsText(11))
+POI_WEIGHT = int(arcpy.GetParameterAsText(12))
+RIVERS_WEIGHT = int(arcpy.GetParameterAsText(13))
+SLOPE_WEIGHT = int(arcpy.GetParameterAsText(14))
+POPULATION_WEIGHT = int(arcpy.GetParameterAsText(15))
 
 arcpy.env.addOutputsToMap = False # Set this with user input?
 getcontext().prec = 4 # Set decimal precision
