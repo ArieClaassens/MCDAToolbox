@@ -138,9 +138,9 @@ LOGGER.debug("------- START LOGGING-----------")
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
 # Define the query filter
-# Should we only update or process all records? True if selected by the user
-if not UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NOT NULL"
+# Should we only update only records with a NULL value?
+if UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NULL"
 else:
     QRY_FILTER = ""
 LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)

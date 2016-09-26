@@ -134,7 +134,7 @@ COUNTER = 0 # Global counter used for progress report
 DATE_STRING = time.strftime("%Y%m%d")
 LOGFILE = unicode(LOGDIR + '\\'+ DATE_STRING +
                   '_mcdatool.log').encode('unicode-escape')
-MAXBYTES = 2097152 # 2MB
+MAXBYTES = 10485760 # 10MB
 BACKUPCOUNT = 10
 # Change this variable to a unique identifier for each script it runs in.
 # Cannot use LOGGER.findCaller(), as we're calling from an embedded script in
@@ -152,12 +152,12 @@ LOGGER.debug("------- START LOGGING-----------")
 arcpy.AddMessage("Your Log file is: " + LOGFILE)
 
 # Define the query filter
-# Should we only update or process all records?
-if not UPDATE_ONLY:
-    FILTER_QUERY = REQUIRED_FIELD + " IS NOT NULL"
+# Should we only update only records with a NULL value?
+if UPDATE_ONLY:
+    QRY_FILTER = REQUIRED_FIELD + " IS NULL"
 else:
-    FILTER_QUERY = ""
-LOGGER.debug("FILTER_QUERY is: " + FILTER_QUERY)
+    QRY_FILTER = ""
+LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
 
 
 # Fishnet creation parameters

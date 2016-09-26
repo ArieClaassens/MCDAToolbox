@@ -75,7 +75,7 @@ arcpy.env.addOutputsToMap = False # Set this with user input?
 DATE_STRING = time.strftime("%Y%m%d")
 LOGFILE = unicode(LOGDIR + '\\'+ DATE_STRING +
                   '_mcdatool.log').encode('unicode-escape')
-MAXBYTES = 2097152 # 2MB
+MAXBYTES = 10485760 # 10MB
 BACKUPCOUNT = 10
 # Change this variable to a unique identifier for each script it runs in.
 # Cannot use LOGGER.findCaller(), as we're calling from an embedded script in
