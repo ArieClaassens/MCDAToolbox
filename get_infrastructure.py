@@ -24,7 +24,7 @@ import logging.handlers
 import time
 from decimal import Decimal, getcontext #For progress COUNTER
 import arcpy
-from arcpy import env
+#from arcpy import env
 
 # Functions and classes
 # Adapted from:
@@ -85,14 +85,14 @@ def compare_list_items(checklist):
     """
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
-    for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+    for checkitem in checklist:
+        LOGGER.debug("Processing " + str(checkitem))
         if check == '': # Nothing captured yet, use the first item as base
-            check = item
-            LOGGER.debug("The check is now %s" % item)
+            check = checkitem
+            LOGGER.debug("The check is now " + str(checkitem))
         else:
             # Test if they match
-            if check == item:
+            if check == checkitem:
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
@@ -122,8 +122,8 @@ arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELDS = ['KEYFEATURES', 'KEYFEATURES_BUFFER_DIST']
 FILTER_FIELD = "KEYFEATURES" # Which field must we filter on and check for?
-KEYFEATURECLASS_LIST = [] # Empty list for the feature classes to process
-KEYFEATURELAYER_LIST = [] # Empty list to store resulting feature layers
+INFRASTRUCTURE_LIST = [] # Empty list for the feature classes to process
+INFRA_FEATURE_LAYER_LIST = [] # Empty list to store resulting feature layers
 # Append the Meters qualifier required for the buffer distance parameter
 BUFFER_DISTM = BUFFER_DIST + " Meters"
 COUNTER = 0
@@ -223,7 +223,7 @@ try:
     REQUIRED_FIELDS.insert(0, 'SHAPE@')
     REQUIRED_FIELDS.insert(0, 'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
+    LOGGER.debug("The FIELDLIST is now " + str(FIELDLIST))
 
     LOGGER.info("Starting with Infrastructure Proximity Analysis")
     START_TIME = time.time()
@@ -298,7 +298,7 @@ try:
             else:
                 gradeInfrastructure = 3
 
-            LOGGER.info("Infrastructure grade: {0}".format(gradeInfrastructure))
+            LOGGER.info("Infrastructure grade: " + str(gradeInfrastructure))
             # Assign the new value to the Infrastructure field
             row[2] = gradeInfrastructure
             # Assign the buffer distance to the Infrastructure buffer distance

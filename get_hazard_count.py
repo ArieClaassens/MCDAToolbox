@@ -87,14 +87,14 @@ def compare_list_items(checklist):
     """
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
-    for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+    for checkitem in checklist:
+        LOGGER.debug("Processing " + str(checkitem))
         if check == '': # Nothing captured yet, use the first item as base
-            check = item
-            LOGGER.debug("The check is now %s" % item)
+            check = checkitem
+            LOGGER.debug("The check is now "+ str(checkitem))
         else:
             # Test if they match
-            if check == item:
+            if check == checkitem:
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
@@ -171,23 +171,23 @@ FISHNET_FC = "in_memory/fishnet3by3"
 # Use 0 for width and height as these values will be calculated by the tool
 # The number of rows and columns, together with origin and opposite corner, will
 # determine the size of each cell, which will vary but always provide nine cells
-cellSizeWidth = '0'
-cellSizeHeight = '0'
-numRows = '3'
-numColumns = '3'
+CELL_SIZE_WIDTH = '0'
+CELL_SIZE_HEIGHT = '0'
+NUM_ROWS = '3'
+NUM_COLUMNS = '3'
 # Set the origin of the fishnet to a default value; update dynamically per row
-originCoordinate = '0 0'
+ORIGIN_COORDINATE = '0 0'
 # Set the orientation by specifying a point on the Y axis. Update in each row
-yAxisCoordinate = '0 0'
+Y_AXIS_COORDINATE = '0 0'
 # Set the opposite corner of the fishnet to a default value; update in each row
-oppositeCorner = '0 0'
+OPPOSITE_CORNER = '0 0'
 # Extent set by origin and opposite corner, no need for a template feature class
-templateExtent = '#'
+TEMPLATE_EXTENT = '#'
 # Each output cell will be a polygon. Slower than polyline, but we're processing
 # one DHA at a time and using in_memory storage to improve performance
-geometryType = 'POLYGON'
+GEOMETRY_TYPE = 'POLYGON'
 # Don't generate an additional feature class containing fishnet labels
-labels = 'NO_LABELS'
+LABELS = 'NO_LABELS'
 
 # Put everything in a try/finally statement, so that we can close the logger
 # even if the script bombs out or we raise an execution error along the line
@@ -257,13 +257,13 @@ try:
     REQUIRED_FIELDS.insert(0, 'SHAPE@')
     REQUIRED_FIELDS.insert(0, 'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.debug("FIELDLIST is now: {0}".format(FIELDLIST))
+    LOGGER.debug("FIELDLIST is now: " + str(FIELDLIST))
 
     LOGGER.info("Starting with the Hazards Count Analysis")
     START_TIME = time.time()
 
     # Get the total number of records to process
-    arcpy.MakeFeatureLayer_management(HAZAREA_FC, "inputHazard", FILTER_QUERY)
+    arcpy.MakeFeatureLayer_management(HAZAREA_FC, "inputHazard", QRY_FILTER)
     RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
     LOGGER.info("Total number of hazard area features: " + str(RECORD_COUNT))
 
@@ -283,7 +283,7 @@ try:
 
     LOGGER.info("Starting with the hazard areas processing....")
 
-    with arcpy.da.UpdateCursor(HAZAREA_FC, FIELDLIST, FILTER_QUERY) as cursor:
+    with arcpy.da.UpdateCursor(HAZAREA_FC, FIELDLIST, QRY_FILTER) as cursor:
         for row in cursor:
             #Loop through Hazard Areas FC
             COUNTER += 1
@@ -296,27 +296,26 @@ try:
             # Get the feature's extent from the @SHAPE data
             extent = row[1].extent
             # display the current values
-            LOGGER.debug("SW: {0}. S: {1}. SE: {2}. W: {3}. CENTER: {4}. \
-                         E: {5}. NW: {6}. N: {7}. NE: {8}"
-                         .format(row[2], row[3], row[4], row[5], row[6],
-                                 row[7], row[8], row[9], row[10]))
-            LOGGER.debug("XMin: {0}, YMin: {1}, XMax: {0}, YMax: {1}"
-                  .format(extent.XMin, extent.YMin, extent.XMax, extent.YMax))
+            LOGGER.debug("SW: %s, S: %s, SE: %s, W: %s, CENTER: %s, E: %s,\
+                         NW: %s, N: %s, NE: %s", row[2], row[3], row[4], row[5],
+                         row[6], row[7], row[8], row[9], row[10])
+            LOGGER.debug("XMin: %s, YMin: %s, XMax: %s, YMax: %s", extent.XMin,
+                         extent.YMin, extent.XMax, extent.YMax)
 
             lowerleft = str(extent.XMin) + " " + str(extent.YMin)
             upperright = str(extent.XMax) + " " + str(extent.YMax)
             # Add 0.1 degree on the Y axis to generate the Y axis coordinate
-            yAxisCoordinate = str(extent.XMin)  + " " + str(extent.YMin + 0.1)
+            Y_AXIS_COORDINATE = str(extent.XMin)  + " " + str(extent.YMin + 0.1)
             # Corners:
-            originCoordinate = lowerleft
-            oppositeCorner = upperright
+            ORIGIN_COORDINATE = lowerleft
+            OPPOSITE_CORNER = upperright
 
             LOGGER.info("Creating the feature's fishnet")
             # Create 3 x 3 fishnet over the current hazard area
-            arcpy.CreateFishnet_management(FISHNET_FC, originCoordinate,
-                                           yAxisCoordinate, None, None, numRows,
-                                           numColumns, oppositeCorner, labels,
-                                           None, geometryType)
+            arcpy.CreateFishnet_management(FISHNET_FC, ORIGIN_COORDINATE,
+                                           Y_AXIS_COORDINATE, None, None, NUM_ROWS,
+                                           NUM_COLUMNS, OPPOSITE_CORNER, LABELS,
+                                           None, GEOMETRY_TYPE)
 
 
             # Build dictionary of fishnet cells and hazard count per cell.
@@ -343,13 +342,13 @@ try:
 
             with arcpy.da.SearchCursor(FISHNET_FC, "SHAPE@") as cursor2:
                 for row2 in cursor2:
-                    LOGGER.debug("Processing cell {0}".format(fishnetCounter))
+                    LOGGER.debug("Processing cell " + str(fishnetCounter))
                     # Loop through the Hazards Feature layer list to find the
                     # total using the locally scope variable below
                     TOTAL_HAZARDS = 0
                     LOGGER.debug("Starting with hazards feature list processing")
                     for fc in HAZARDSLIST_FEATLAYER:
-                        LOGGER.debug("  Processing hazard feature class: {0}".format(fc))
+                        LOGGER.debug("  Processing hazard feature class: " + str(fc))
                         # Filter the HAZARDS FC on the current hazard area so
                         # we only count hazards falling inside this hazard area
                         # DOES THIS PREVENT DOUBLE COUNTING IN OVERLAPPING DHA?
@@ -360,12 +359,12 @@ try:
                         arcpy.SelectLayerByLocation_management(fc, "WITHIN", row2[0])
                         CELL_RESULT = arcpy.GetCount_management(fc)
                         TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
-                        LOGGER.debug("  TOTAL_HAZARDS is: {0}".format(TOTAL_HAZARDS))
+                        LOGGER.debug("  TOTAL_HAZARDS is: " + str(TOTAL_HAZARDS))
                         # Remove the filter on the HAZARDS FC
                         arcpy.SelectLayerByAttribute_management(fc, "CLEAR_SELECTION", "")
 
                     # Now we have the total hazards in this cell
-                    LOGGER.debug("TOTAL_HAZARDS is now: {0}".format(TOTAL_HAZARDS))
+                    LOGGER.debug("TOTAL_HAZARDS is now: " + str(TOTAL_HAZARDS))
 
                     # Assign the hazard count to the fishnet polygon that is
                     # currently being processed
@@ -392,7 +391,7 @@ try:
                     fishnetCounter += 1
 
             # Print the final cluster dictionary
-            LOGGER.debug("clusterDictionary is: {0}".format(clusterDictionary))
+            LOGGER.debug("clusterDictionary is: " + str(clusterDictionary))
 
             # Update the row with the new values
             row[2] = clusterDictionary['SW']
@@ -414,8 +413,8 @@ try:
 
     STOP_TIME = time.time()
     LOGGER.info("Total execution time in seconds = " +
-                     str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
-                     str(int(STOP_TIME-START_TIME)/60))
+                str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
+                str(int(STOP_TIME-START_TIME)/60))
 
 finally:
     # Shut down logging after script has finished running.

@@ -80,10 +80,10 @@ def compare_list_items(checklist):
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
     for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+        LOGGER.debug("Processing "+ str(item))
         if check == '': # Nothing captured yet, use the first item as base
             check = item
-            LOGGER.debug("The check is now %s" % item)
+            LOGGER.debug("The check is now "+ str(item))
         else:
             # Test if they match
             if check == item:
@@ -159,8 +159,8 @@ try:
 
     # Check if the target feature class has the required attribute field.
     if not fieldexist(HAZAREA_FC, REQUIRED_FIELD):
-        LOGGER.debug("Check for field: " + checkfield)
-        LOGGER.error("The field "+ checkfield +" does not exist. \
+        LOGGER.debug("Check for field: " + REQUIRED_FIELD)
+        LOGGER.error("The field "+ REQUIRED_FIELD +" does not exist. \
                              Please use the correct feature class.")
         raise arcpy.ExecuteError
 
@@ -169,8 +169,8 @@ try:
     if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
         if int(arcpy.GetRasterProperties_management(ASPECT_RASTER, "ALLNODATA").
-           getOutput(0)) == 1:
-            LOGGER.error("All cells are NoData in {0}".format(ASPECT_RASTER))
+               getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in " + str(ASPECT_RASTER))
             LOGGER.error("Please use a raster layer that contains data.")
             raise arcpy.ExecuteError
     else:
@@ -233,14 +233,14 @@ try:
             # https://docs.python.org/3/library/decimal.html
             pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) *100
             LOGGER.info("Processing OID " + str(row[0]) +
-                             ", with current ASPECT value of "+ str(row[3]) +
-                             ". Feature " + str(COUNTER) + " of " +
-                             str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
+                        ", with current ASPECT value of "+ str(row[3]) +
+                        ". Feature " + str(COUNTER) + " of " +
+                        str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
             # Print the coordinate tuple
             LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
             # Set an initial default value
             LOGGER.debug("Setting default value of -2 before row is processed")
-            cellvalue = -2
+            cellvalue = -2.00
             # Get the Cell Value from the Aspect Raster
             try:
                 cellresult = arcpy.GetCellValue_management(ASPECT_RASTER,
@@ -248,22 +248,22 @@ try:
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = float(cellresult.getOutput(0))
-                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
+                LOGGER.debug("The raster cell value is " + str(cellvalue))
 
             except Exception as err:
                 arcpy.AddError(err.args[0])
 
             row[3] = cellvalue
             cursor.updateRow(row)
-            LOGGER.debug("The aspect value is now: {0}".format(row[3]))
+            LOGGER.debug("The aspect value is now: " + str(row[3]))
 
     # Calculate the execution time
     LOGGER.info("Aspect value calculation completed")
     #print datetime.now()
     STOP_TIME = time.time()
     LOGGER.info("Total execution time in seconds = " +
-                     str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
-                     str(int(STOP_TIME-START_TIME)/60))
+                str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
+                str(int(STOP_TIME-START_TIME)/60))
 
 finally:
     # Shut down logging after script has finished running.

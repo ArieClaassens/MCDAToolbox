@@ -84,14 +84,14 @@ def compare_list_items(checklist):
     """
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
-    for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+    for checkitem in checklist:
+        LOGGER.debug("Processing " + str(checkitem))
         if check == '': # Nothing captured yet, use the first item as base
-            check = item
-            LOGGER.debug("The check is now %s" % item)
+            check = checkitem
+            LOGGER.debug("The check is now " + str(checkitem))
         else:
             # Test if they match
-            if check == item:
+            if check == checkitem:
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
@@ -222,7 +222,7 @@ try:
     REQUIRED_FIELDS.insert(0, 'SHAPE@')
     REQUIRED_FIELDS.insert(0, 'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
+    LOGGER.debug("The FIELDLIST is now " + str(FIELDLIST))
 
     arcpy.AddMessage("Starting with River/Water Basins Proximity Analysis")
     START_TIME = time.time()
@@ -253,9 +253,9 @@ try:
             COUNTER += 1
             pctDone = Decimal(COUNTER)/Decimal(RECORD_COUNT) *100
             LOGGER.info("Processing OID " + str(row[0]) +
-                             ", with RIVERS grading of "+ str(row[2]) +
-                             ". Feature " + str(COUNTER) + " of " +
-                             str(RECORD_COUNT) + " or " + str(pctDone) + " %")
+                        ", with RIVERS grading of "+ str(row[2]) +
+                        ". Feature " + str(COUNTER) + " of " +
+                        str(RECORD_COUNT) + " or " + str(pctDone) + " %")
 
             # Now loop over items in Rivers list and tally up the total
             # Select the current feature from original Hazard FC
@@ -272,10 +272,9 @@ try:
                 # Takes longer due to the buffering done as part of each query.
                 # But faster than clipping source and using that.
                 TEMP = arcpy.SelectLayerByLocation_management(fc,
-                                                                      "WITHIN_A_DISTANCE_GEODESIC",
-                                                                      "inputHazard",
-                                                                      BUFFER_DISTM,
-                                                                      "")
+                                                              "WITHIN_A_DISTANCE_GEODESIC",
+                                                              "inputHazard",
+                                                              BUFFER_DISTM, "")
                 # Count the rows and add it to the COUNTER
                 TOTAL_RIVER_ITEMS += int(arcpy.GetCount_management(TEMP).getOutput(0))
 

@@ -258,4 +258,3 @@ finally:
     LOGGER.removeHandler(HANDLER)
     HANDLER.close()
     logging.shutdown()
-

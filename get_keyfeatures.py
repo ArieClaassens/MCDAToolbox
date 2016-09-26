@@ -24,7 +24,7 @@ import logging.handlers
 import time
 from decimal import Decimal, getcontext #For progress COUNTER
 import arcpy
-from arcpy import env
+#from arcpy import env
 
 # Functions and classes
 # Adapted from:
@@ -85,14 +85,14 @@ def compare_list_items(checklist):
     """
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
-    for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+    for checkitem in checklist:
+        LOGGER.debug("Processing " + str(checkitem))
         if check == '': # Nothing captured yet, use the first item as base
-            check = item
-            LOGGER.debug("The check is now %s" % item)
+            check = checkitem
+            LOGGER.debug("The check is now " + str(checkitem))
         else:
             # Test if they match
-            if check == item:
+            if check == checkitem:
                 LOGGER.debug("The items match. Continue testing")
             else:
                 mismatch = True
@@ -223,7 +223,7 @@ try:
     REQUIRED_FIELDS.insert(0, 'SHAPE@')
     REQUIRED_FIELDS.insert(0, 'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
+    LOGGER.debug("The FIELDLIST is now " + str(FIELDLIST))
 
     arcpy.AddMessage("Starting with Key Features Proximity Analysis")
     START_TIME = time.time()

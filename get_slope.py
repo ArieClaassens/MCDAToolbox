@@ -81,10 +81,10 @@ def compare_list_items(checklist):
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
     for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+        LOGGER.debug("Processing " + str(item))
         if check == '': # Nothing captured yet, use the first item as base
             check = item
-            LOGGER.debug("The check is now %s" % item)
+            LOGGER.debug("The check is now " + str(item))
         else:
             # Test if they match
             if check == item:
@@ -168,8 +168,8 @@ try:
     if int(arcpy.GetRasterProperties_management(SLOPE_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
         if int(arcpy.GetRasterProperties_management(SLOPE_RASTER, "ALLNODATA").
-           getOutput(0)) == 1:
-            LOGGER.error("All cells are NoData in {0}".format(SLOPE_RASTER))
+               getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in " + str(SLOPE_RASTER))
             LOGGER.error("Please use a raster layer that contains data.")
             raise arcpy.ExecuteError
     else:
@@ -230,13 +230,13 @@ try:
             # https://docs.python.org/3/library/decimal.html
             pctDone = Decimal(COUNTER)/Decimal(COUNT_RECORDS) *100
             LOGGER.info("Processing OID " + str(row[0]) + ", with SLOPE of "+
-                             str(row[3]) + ". Feature " + str(COUNTER) + " of " +
-                             str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
+                        str(row[3]) + ". Feature " + str(COUNTER) + " of " +
+                        str(COUNT_RECORDS) + " or " + str(pctDone) + " %")
             # Print the coordinate tuple
             LOGGER.debug("X and Y: " + str(row[1]) + " " + str(row[2]))
             # Set an initial default value
             LOGGER.debug("Setting initial default value of -180")
-            cellvalue = 0
+            cellvalue = 0.00
             # Get the Cell Value from the SLOPE Raster
             try:
                 cellresult = arcpy.GetCellValue_management(SLOPE_RASTER,
@@ -244,14 +244,14 @@ try:
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = float(cellresult.getOutput(0))
-                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
+                LOGGER.debug("The raster cell value is " + str(cellvalue))
 
             except Exception as err:
                 arcpy.AddMessage(err.args[0])
 
             row[3] = cellvalue
             cursor.updateRow(row)
-            LOGGER.debug("The slope value is now: {0}".format(row[3]))
+            LOGGER.debug("The slope value is now: " + str(row[3]))
 
     # Calculate the execution time
     STOP_TIME = time.time()

@@ -26,7 +26,6 @@ by the user to each factor.
 
 
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
 import time # For timing purposes
@@ -85,10 +84,10 @@ def check_weights_same(weightslist):
     privateset = set(weightslist)
     uniquelist = list(privateset)
     if len(uniquelist) > 4:
-        LOGGER.debug("Length of the unique values list: {0}".format(len(uniquelist)))
+        LOGGER.debug("Length of the unique values list: " + str(len(uniquelist)))
         return True
     else:
-        LOGGER.error("Length of the unique values list: {0}".format(len(uniquelist)))
+        LOGGER.error("Length of the unique values list: " + str(len(uniquelist)))
         return False
 
 # SDSS priority calculation formulas
@@ -306,11 +305,11 @@ try:
     # Sanity checks:
 
     # Check if the weights are not all the same value
-    weightlist = [LANDCOVER_WEIGHT, ASPECT_WEIGHT, INFRASTRUCTURE_WEIGHT,
-                  KEYFEATURES_WEIGHT, ACCIDENTS_WEIGHT, POI_WEIGHT,
-                  RIVERS_WEIGHT, SLOPE_WEIGHT, POPULATION_WEIGHT]
+    WEIGHT_LIST = [LANDCOVER_WEIGHT, ASPECT_WEIGHT, INFRASTRUCTURE_WEIGHT,
+                   KEYFEATURES_WEIGHT, ACCIDENTS_WEIGHT, POI_WEIGHT,
+                   RIVERS_WEIGHT, SLOPE_WEIGHT, POPULATION_WEIGHT]
 
-    if check_weights_same(weightlist):
+    if check_weights_same(WEIGHT_LIST):
         LOGGER.debug("The weights do not all match")
     else:
         LOGGER.error("Please assign at least four different factor weights.")

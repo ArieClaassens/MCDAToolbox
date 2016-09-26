@@ -84,10 +84,10 @@ def compare_list_items(checklist):
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
     for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+        LOGGER.debug("Processing " + str(item))
         if check == '': # Nothing captured yet, use the first item as base
             check = item
-            LOGGER.debug("The check is now %s" % item)
+            LOGGER.debug("The check is now " + str(item))
         else:
             # Test if they match
             if check == item:
@@ -204,7 +204,7 @@ try:
     REQUIRED_FIELDS.insert(0, 'SHAPE@')
     REQUIRED_FIELDS.insert(0, 'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
-    LOGGER.debug("The FIELDLIST is now {0}".format(FIELDLIST))
+    LOGGER.debug("The FIELDLIST is now " + str(FIELDLIST))
 
     LOGGER.info("Starting the Population Hazard Impact analysis")
     START_TIME = time.time()
@@ -254,8 +254,8 @@ try:
 
             TOT_POP = int(arcpy.GetCount_management("popFeatures")[0])
             # Round the floating number and cast as integer
-            TOT_POP = str(int(round(TOT_POP)))
-            LOGGER.info("Potential population affected is : {0}".format(TOT_POP))
+            TOT_POP = int(round(TOT_POP))
+            LOGGER.info("Potential population affected is : " + str(TOT_POP))
 
             # Assign the new value to the POPULATION field
             row[2] = TOT_POP
@@ -266,8 +266,8 @@ try:
 
     STOP_TIME = time.time()
     LOGGER.info("Total execution time in seconds = " +
-                     str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
-                     str(int(STOP_TIME-START_TIME)/60))
+                str(int(STOP_TIME-START_TIME)) + " and in minutes = " +
+                str(int(STOP_TIME-START_TIME)/60))
 
 finally:
     # Shut down logging after script has finished running.

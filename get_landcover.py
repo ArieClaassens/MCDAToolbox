@@ -82,10 +82,10 @@ def compare_list_items(checklist):
     mismatch = False # Local variable to store match results
     check = '' # Local variable to store the spatial projection
     for item in checklist:
-        LOGGER.debug("Processing %s" % item)
+        LOGGER.debug("Processing " + str(item))
         if check == '': # Nothing captured yet, use the first item as base
             check = item
-            LOGGER.debug("The check is now %s" % item)
+            LOGGER.debug("The check is now " + str(item))
         else:
             # Test if they match
             if check == item:
@@ -169,8 +169,8 @@ try:
     if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ANYNODATA").
            getOutput(0)) == 1:
         if int(arcpy.GetRasterProperties_management(LANDCOVER_RASTER, "ALLNODATA").
-           getOutput(0)) == 1:
-            LOGGER.error("All cells are NoData in {0}".format(LANDCOVER_RASTER))
+               getOutput(0)) == 1:
+            LOGGER.error("All cells are NoData in " + str(LANDCOVER_RASTER))
             LOGGER.error("Please use a raster layer that contains data.")
             raise arcpy.ExecuteError
     else:
@@ -246,14 +246,14 @@ try:
                                                            str(row[2]))
                 # See http://gis.stackexchange.com/questions/55246/casting-arcpy-result-as-integer-instead-arcpy-getcount-management
                 cellvalue = int(cellresult.getOutput(0))
-                LOGGER.debug("The raster cell value is {0}".format(cellvalue))
+                LOGGER.debug("The raster cell value is " + str(cellvalue))
 
             except Exception as err:
                 LOGGER.error(err.args[0])
 
             row[3] = cellvalue
             cursor.updateRow(row)
-            LOGGER.debug("The land cover value is now: {0}".format(row[3]))
+            LOGGER.debug("The land cover value is now: " + str(row[3]))
 
     # Calculate the execution time
     STOP_TIME = time.time()

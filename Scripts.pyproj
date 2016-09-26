@@ -28,7 +28,6 @@
     <Compile Include="calc_score.py" />
     <Compile Include="get_accidents.py" />
     <Compile Include="get_hazard_count.py" />
-    <Compile Include="clip_landcover.py" />
     <Compile Include="create_report.py" />
     <Compile Include="get_aspect.py" />
     <Compile Include="get_infrastructure.py" />

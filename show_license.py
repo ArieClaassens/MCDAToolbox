@@ -14,14 +14,9 @@ Displays the MCDA Toolbox license and logs it to the log file.
 """
 
 #Import libraries
-import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
-#from datetime import datetime, date
-import time # For timing purposes
-from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
+import time
 import arcpy
 
 # Functions and classes

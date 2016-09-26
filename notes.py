@@ -1,7 +1,5 @@
 # Add source info to the criteria data field help, e.g. OSM Key Features export, in Toolbox
 
-# Run PyLint tests
-
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
 
 # Move the check_proj code into the mismatch check function - DO LAST?
@@ -40,7 +38,7 @@
 #Calculate statistics on Fishnet cells:
 # Replace a layer/table view name with a path to a dataset (which can be a layer file) or create the layer/table view within the script
 # The following inputs are layers or table views: "DHA_Clearance"
-arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.gdb/DHA_Clearance_Statistics1", statistics_fields="SW MEAN;S MEAN;SE MEAN;W MEAN;CENTER MEAN;E MEAN;NW MEAN;N MEAN;NE MEAN", case_field="")
+#arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.gdb/DHA_Clearance_Statistics1", statistics_fields="SW MEAN;S MEAN;SE MEAN;W MEAN;CENTER MEAN;E MEAN;NW MEAN;N MEAN;NE MEAN", case_field="")
 #OBJECTID *    FREQUENCY    MEAN_SW    MEAN_S    MEAN_SE    MEAN_W    MEAN_CENTER    MEAN_E    MEAN_NW    MEAN_N    MEAN_NE
 #1    1    8    0    17    17    22    14    6    14    15
 
@@ -149,3 +147,5 @@ arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.g
 # Look at the Scripting explanation section for each parameter!!!!
 
 # Swap images in Tool Help so thumbnail is loaded at top
+
+# Run PyLint tests
