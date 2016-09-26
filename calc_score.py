@@ -29,11 +29,8 @@ by the user to each factor.
 import sys # required for the sys.exit() call to halt the script
 import logging
 import logging.handlers
-#from datetime import datetime, date
 import time # For timing purposes
-from decimal import Decimal, getcontext #For progress COUNTER
-# https://arcpy.wordpress.com/2012/07/02/retrieving-total-counts/
-#import collections
+from decimal import Decimal, getcontext
 import arcpy
 
 
@@ -100,7 +97,7 @@ def landcover_calc(landcovervalue):
 	Calculate the classification of the land cover parameter based on the
 	land cover key recorded for this feature.
 	"""
-	if landcovervalue == 200:
+	if landcovervalue == BAREAREA_CODE:
 		landcover = 1
 	else:
 		landcover = 3

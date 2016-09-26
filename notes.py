@@ -1,17 +1,12 @@
-# Mixed use of SOURCE_FC and TARGET_FC for Hazard Areas FC. Standardise on HAZAREA_FC across all the scripts
+# Swap images in Tool Help so thumbnail is loaded at top
 
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
-
-# Check that all script configs specify the SOURCE_FC Field as Hazard Areas Feature Class.
 
 # Move the check_proj code into the mismatch check function - DO LAST?
 
 # Add a filter in script on parameters - define the specific feature class types that are allowed as input, e.g. POLYGON
 
 # Add Pop Impact script that allows user to work with raster data (currently using vector feature class) ?
-
-# Toolbox tools descriptions: http://resources.arcgis.com/en/help/main/10.1/index.html#/A_quick_tour_of_documenting_tools_and_toolboxes/001500000014000000/
-# Look at the Scripting explanation section for each parameter!!!!
 
 # What is up with Rasters and NoData?
 
@@ -146,3 +141,7 @@ arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.g
 
 # WHERE script checks for all entries in REQUIRED_FIELDS, the REQUIRED_FIELD must change to FILTER_FIELD!!!!
 
+# Mixed use of SOURCE_FC and TARGET_FC for Hazard Areas FC. Standardise on HAZAREA_FC across all the scripts
+
+# Toolbox tools descriptions: http://resources.arcgis.com/en/help/main/10.1/index.html#/A_quick_tour_of_documenting_tools_and_toolboxes/001500000014000000/
+# Look at the Scripting explanation section for each parameter!!!!
