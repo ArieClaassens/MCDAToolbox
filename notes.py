@@ -1,5 +1,3 @@
-# Rename Update Only to Skip existing records, as this is what it does.
-
 # Mixed use of SOURCE_FC and TARGET_FC for Hazard Areas FC. Standardise across all the scripts
 
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
