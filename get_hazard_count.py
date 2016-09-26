@@ -173,7 +173,7 @@ FISHNET_FC = "in_memory/fishnet3by3"
 # determine the size of each cell, which will vary but always provide nine cells
 cellSizeWidth = '0'
 cellSizeHeight = '0'
-numRows =  '3'
+numRows = '3'
 numColumns = '3'
 # Set the origin of the fishnet to a default value; update dynamically per row
 originCoordinate = '0 0'
@@ -254,8 +254,8 @@ try:
     LOGGER.info("Adding OBJECTID and SHAPE@ fields to FIELDLIST")
     # Insert the fields at the start of the list to obtain the required
     # field ordering
-    REQUIRED_FIELDS.insert(0,'SHAPE@')
-    REQUIRED_FIELDS.insert(0,'OBJECTID')
+    REQUIRED_FIELDS.insert(0, 'SHAPE@')
+    REQUIRED_FIELDS.insert(0, 'OBJECTID')
     FIELDLIST = REQUIRED_FIELDS
     LOGGER.debug("FIELDLIST is now: {0}".format(FIELDLIST))
 
@@ -362,7 +362,7 @@ try:
                         TOTAL_HAZARDS += int(CELL_RESULT.getOutput(0))
                         LOGGER.debug("  TOTAL_HAZARDS is: {0}".format(TOTAL_HAZARDS))
                         # Remove the filter on the HAZARDS FC
-                        arcpy.SelectLayerByAttribute_management(fc,"CLEAR_SELECTION","")
+                        arcpy.SelectLayerByAttribute_management(fc, "CLEAR_SELECTION", "")
 
                     # Now we have the total hazards in this cell
                     LOGGER.debug("TOTAL_HAZARDS is now: {0}".format(TOTAL_HAZARDS))
@@ -370,23 +370,23 @@ try:
                     # Assign the hazard count to the fishnet polygon that is
                     # currently being processed
                     if fishnetCounter == 0:
-                       clusterDictionary['SW'] = TOTAL_HAZARDS
+                        clusterDictionary['SW'] = TOTAL_HAZARDS
                     elif fishnetCounter == 1:
-                       clusterDictionary['S'] = TOTAL_HAZARDS
+                        clusterDictionary['S'] = TOTAL_HAZARDS
                     elif fishnetCounter == 2:
-                       clusterDictionary['SE'] = TOTAL_HAZARDS
+                        clusterDictionary['SE'] = TOTAL_HAZARDS
                     elif fishnetCounter == 3:
-                       clusterDictionary['W'] = TOTAL_HAZARDS
+                        clusterDictionary['W'] = TOTAL_HAZARDS
                     elif fishnetCounter == 4:
-                       clusterDictionary['CENTER'] = TOTAL_HAZARDS
+                        clusterDictionary['CENTER'] = TOTAL_HAZARDS
                     elif fishnetCounter == 5:
-                       clusterDictionary['E'] = TOTAL_HAZARDS
+                        clusterDictionary['E'] = TOTAL_HAZARDS
                     elif fishnetCounter == 6:
-                       clusterDictionary['NW'] = TOTAL_HAZARDS
+                        clusterDictionary['NW'] = TOTAL_HAZARDS
                     elif fishnetCounter == 7:
-                       clusterDictionary['N'] = TOTAL_HAZARDS
+                        clusterDictionary['N'] = TOTAL_HAZARDS
                     else:
-                       clusterDictionary['NE'] = TOTAL_HAZARDS
+                        clusterDictionary['NE'] = TOTAL_HAZARDS
 
                     # Increment counter
                     fishnetCounter += 1
