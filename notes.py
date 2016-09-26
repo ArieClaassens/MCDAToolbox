@@ -2,8 +2,6 @@
 
 # Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
 
-# WHERE script checks for all entries in REQUIRED_FIELDS, the REQUIRED_FIELD must change to FILTER_FIELD!!!!
-
 # Check that all script configs specify the SOURCE_FC Field as Hazard Areas Feature Class.
 
 # Move the check_proj code into the mismatch check function - DO LAST?
@@ -145,3 +143,6 @@ arcpy.Statistics_analysis(in_table="DHA_Clearance", out_table="C:/TEMP/Scratch.g
 ############################################################################################
 
 # Add License as a separate script
+
+# WHERE script checks for all entries in REQUIRED_FIELDS, the REQUIRED_FIELD must change to FILTER_FIELD!!!!
+

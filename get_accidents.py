@@ -121,7 +121,7 @@ UPDATE_ONLY = arcpy.GetParameterAsText(7) # Boolean result received as text
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELDS = ['ACCIDENTS', 'ACCIDENTS_BUFFER_DIST']
-REQUIRED_FIELD = "ACCIDENTS" # Which field must we filter on and check for?
+FILTER_FIELD = "ACCIDENTS" # Which field must we filter on and check for?
 ACCIDENTS_LIST = [] # Empty list that will store the feature classes to process
 ACCIDENTSLIST_FEATLAYER = [] # Empty list that will store feature layers
 # Append the Meters qualifier required for the buffer distance parameter
@@ -153,7 +153,7 @@ arcpy.AddMessage("Your Log file is: " + LOGFILE)
 # Define the query filter
 # Should we only update only records with a NULL value?
 if UPDATE_ONLY:
-	QRY_FILTER = REQUIRED_FIELD + " IS NULL"
+	QRY_FILTER = FILTER_FIELD + " IS NULL"
 else:
 	QRY_FILTER = ""
 LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)

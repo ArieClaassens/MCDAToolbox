@@ -123,7 +123,7 @@ UPDATE_ONLY = arcpy.GetParameterAsText(6) # Boolean result received as text
 arcpy.env.addOutputsToMap = False
 getcontext().prec = 4 # Set decimal precision
 REQUIRED_FIELDS = ['SW', 'S', 'SE', 'W', 'CENTER', 'E', 'NW', 'N', 'NE']
-REQUIRED_FIELD = 'SW' # Which field must we filter on and check for?
+FILTER_FIELD = 'SW' # Which field must we filter on and check for?
 # Use the SW field as a proxy for all nine fishnet (grid) cells
 HAZARDS_LIST = [] # Empty list that will store the feature classes to process
 HAZARDSLIST_FEATLAYER = [] # Empty list that will store the feature layers
@@ -154,7 +154,7 @@ arcpy.AddMessage("Your Log file is: " + LOGFILE)
 # Define the query filter
 # Should we only update only records with a NULL value?
 if UPDATE_ONLY:
-    QRY_FILTER = REQUIRED_FIELD + " IS NULL"
+    QRY_FILTER = FILTER_FIELD + " IS NULL"
 else:
     QRY_FILTER = ""
 LOGGER.debug("QRY_FILTER is: " + QRY_FILTER)
