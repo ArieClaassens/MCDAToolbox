@@ -111,7 +111,7 @@ def compare_list_items(checklist):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
-SOURCE_FC = arcpy.GetParameterAsText(3)
+HAZAREA_FC = arcpy.GetParameterAsText(3)
 INFRA_FC1 = arcpy.GetParameterAsText(4)
 INFRA_FC2 = arcpy.GetParameterAsText(5)
 BUFFER_DIST = arcpy.GetParameterAsText(6) # buffer distance in meters
@@ -164,15 +164,15 @@ try:
 	# Sanity checks:
 
 	# Check if the target feature class has any features before we start
-	if int(arcpy.GetCount_management(SOURCE_FC)[0]) == 0:
+	if int(arcpy.GetCount_management(HAZAREA_FC)[0]) == 0:
 		LOGGER.error("{0} has no features. Please use a feature class that \
 					  already contains the required features and attributes." \
-					  .format(SOURCE_FC))
+					  .format(HAZAREA_FC))
 		raise arcpy.ExecuteError
 
 	# Check if the target feature class has all of the required attribute fields.
 	for checkfield in REQUIRED_FIELDS:
-		if not fieldexist(SOURCE_FC, checkfield):
+		if not fieldexist(HAZAREA_FC, checkfield):
 			LOGGER.debug("Check for field: " + checkfield)
 			LOGGER.error("The field "+ checkfield +" does not exist. \
 							 Please use the correct feature class.")
@@ -200,10 +200,10 @@ try:
 	# actively chooses not to do so.
 	LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
 	if CHECK_PROJ == 'true':
-		#LOGGER.info(SOURCE_FC)
+		#LOGGER.info(HAZAREA_FC)
 		LIST_FC = [] # Emtpy list to store FC
 		# Add spatial references of all items
-		LIST_FC.append(get_projection(SOURCE_FC))
+		LIST_FC.append(get_projection(HAZAREA_FC))
 		LIST_FC.append(get_projection(INFRA_FC1))
 		if len(INFRA_FC2) > 1:
 			LIST_FC.append(get_projection(INFRA_FC2))
@@ -229,7 +229,7 @@ try:
 	START_TIME = time.time()
 
 	# Get the total number of records to process
-	arcpy.MakeFeatureLayer_management(SOURCE_FC, "inputHazard", QRY_FILTER)
+	arcpy.MakeFeatureLayer_management(HAZAREA_FC, "inputHazard", QRY_FILTER)
 	RECORD_COUNT = int(arcpy.GetCount_management("inputHazard").getOutput(0))
 	LOGGER.info("Total number of features: " + str(RECORD_COUNT))
 
@@ -248,7 +248,7 @@ try:
 		INFRA_FEATURE_LAYER_LIST.append(itemFlayerName)
 
 	LOGGER.info("Starting with the hazards area processing")
-	with arcpy.da.UpdateCursor(SOURCE_FC, FIELDLIST, QRY_FILTER) as cursor:
+	with arcpy.da.UpdateCursor(HAZAREA_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
 			#Loop through Hazard Areas FC
 			COUNTER += 1

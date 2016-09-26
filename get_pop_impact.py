@@ -109,7 +109,7 @@ def compare_list_items(checklist):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
-TARGET_FC = arcpy.GetParameterAsText(3)
+HAZAREA_FC = arcpy.GetParameterAsText(3)
 POP_FC = arcpy.GetParameterAsText(4)
 BUFFER_DIST = arcpy.GetParameterAsText(5) # buffer distance in meters
 UPDATE_ONLY = arcpy.GetParameterAsText(6) # Boolean result received as text
@@ -159,15 +159,15 @@ try:
 	# Sanity checks:
 
 	# Check if the target feature class has any features before we start
-	if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
+	if int(arcpy.GetCount_management(HAZAREA_FC)[0]) == 0:
 		LOGGER.error("{0} has no features. Please use a feature class that \
 					  already contains the required features and attributes." \
-					  .format(TARGET_FC))
+					  .format(HAZAREA_FC))
 		raise arcpy.ExecuteError
 
 	# Check if the target feature class has all of the required attribute fields.
 	for checkfield in REQUIRED_FIELDS:
-		if not fieldexist(TARGET_FC, checkfield):
+		if not fieldexist(HAZAREA_FC, checkfield):
 			LOGGER.debug("Check for field: " + checkfield)
 			LOGGER.error("The field "+ checkfield +" does not exist. \
 							 Please use the correct feature class.")
@@ -186,7 +186,7 @@ try:
 	if CHECK_PROJ == 'true':
 		LIST_FC = [] # Emtpy list to store FC
 		# Add spatial references of all items
-		LIST_FC.append(get_projection(TARGET_FC))
+		LIST_FC.append(get_projection(HAZAREA_FC))
 		LIST_FC.append(get_projection(POP_FC))
 		LOGGER.debug("The list of spatial references to check is:")
 		LOGGER.debug(LIST_FC)
@@ -212,7 +212,7 @@ try:
 	# Get the total number of records to process after creating feature layer
 	COUNT_RECORDS = 0
 	LOGGER.debug("Creating Hazard Area Feature Layer")
-	arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+	arcpy.MakeFeatureLayer_management(HAZAREA_FC, "inputHazard", QRY_FILTER)
 	COUNT_RECORDS = int(arcpy.GetCount_management("inputHazard").getOutput(0))
 	LOGGER.info("Hazard Area feature count: " + str(COUNT_RECORDS))
 
@@ -228,7 +228,7 @@ try:
 
 	COUNTER = 0
 	LOGGER.info("Starting to iterate over DHA using UpdateCursor")
-	with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST, QRY_FILTER) as cursor:
+	with arcpy.da.UpdateCursor(HAZAREA_FC, FIELDLIST, QRY_FILTER) as cursor:
 		for row in cursor:
 			TOT_POP = 0
 			#Loop through Hazard Areas FC

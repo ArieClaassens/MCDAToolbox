@@ -107,7 +107,7 @@ def compare_list_items(checklist):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 CHECK_PROJ = arcpy.GetParameterAsText(2) # Boolean result received as text
-TARGET_FC = arcpy.GetParameterAsText(3)
+HAZAREA_FC = arcpy.GetParameterAsText(3)
 LANDCOVER_RASTER = arcpy.GetParameterAsText(4)
 UPDATE_ONLY = arcpy.GetParameterAsText(5) # Boolean result received as text
 
@@ -152,14 +152,14 @@ try:
     # Sanity checks:
 
     # Check if the target feature class has any features before we start
-    if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
+    if int(arcpy.GetCount_management(HAZAREA_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \
                       already contains the required features and attributes." \
-                      .format(TARGET_FC))
+                      .format(HAZAREA_FC))
         raise arcpy.ExecuteError
 
     # Check if the target feature class has the required attribute field.
-    if not fieldexist(TARGET_FC, REQUIRED_FIELD):
+    if not fieldexist(HAZAREA_FC, REQUIRED_FIELD):
         LOGGER.error("The field "+ REQUIRED_FIELD +" does not exist. \
                          Please use the correct Hazard feature class.")
         raise arcpy.ExecuteError
@@ -180,10 +180,10 @@ try:
     # actively chooses not to do so.
     LOGGER.info("Check for spatial reference mismatches? : " + CHECK_PROJ)
     if CHECK_PROJ == 'true':
-        #LOGGER.info(TARGET_FC)
+        #LOGGER.info(HAZAREA_FC)
         LIST_FC = [] # Emtpy list to store FC
         # Add spatial references of all items
-        LIST_FC.append(get_projection(TARGET_FC))
+        LIST_FC.append(get_projection(HAZAREA_FC))
         LIST_FC.append(get_projection(LANDCOVER_RASTER))
         LOGGER.debug("The list of spatial references to check is:")
         LOGGER.debug(LIST_FC)
@@ -197,7 +197,7 @@ try:
     # Determine if we are working with a POINT or POLYGON shape type and adjust
     # the fields list to use the inside centroid X and Y fields added in the
     # first step, i.e. INSIDE_X and INSIDE_Y
-    FC_DESC = arcpy.Describe(TARGET_FC)
+    FC_DESC = arcpy.Describe(HAZAREA_FC)
     if FC_DESC.shapeType == "Polygon":
         LOGGER.info("POLYGON feature class detected. Proceeding.")
         FIELDLIST = ['OBJECTID', 'INSIDE_X', 'INSIDE_Y', REQUIRED_FIELD]
@@ -212,7 +212,7 @@ try:
     # See http://gis.stackexchange.com/questions/30140/fastest-way-to-count-the-number-of-features-in-a-feature-class
     COUNT_RECORDS = 0
     LOGGER.info("COUNT_RECORDS START: " + str(COUNT_RECORDS))
-    arcpy.MakeFeatureLayer_management(TARGET_FC, "inputHazard", QRY_FILTER)
+    arcpy.MakeFeatureLayer_management(HAZAREA_FC, "inputHazard", QRY_FILTER)
     arcpy.MakeTableView_management("inputHazard", "tableViewTargetFC", QRY_FILTER)
     COUNT_RECORDS = int(arcpy.GetCount_management("tableViewTargetFC").getOutput(0))
     # Destroy the temporary table
@@ -225,7 +225,7 @@ try:
 
     COUNTER = 0
 
-    with arcpy.da.UpdateCursor(TARGET_FC, FIELDLIST) as cursor:
+    with arcpy.da.UpdateCursor(HAZAREA_FC, FIELDLIST) as cursor:
         for row in cursor:
             COUNTER += 1
             # https://docs.python.org/3/library/decimal.html - decimal output

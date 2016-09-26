@@ -21,8 +21,8 @@ by the user to each factor.
 # Or keep settings in a configuration file, which the user can edit? Put all
 # classification breaks in there.
 
-# Copy SOURCE_FC to TARGET_FC and run calculations on TARGET_FC, so we can repeat
-# the process with new values, keeping the SOURCE_FC intact.
+# Copy HAZAREA_FC to TARGET_FC and run calculations on TARGET_FC, so we can repeat
+# the process with new values, keeping the HAZAREA_FC intact.
 
 
 #Import libraries
@@ -257,9 +257,8 @@ def sdss_priority_calc(score):
 # User Input parameters
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
-SOURCE_FC = arcpy.GetParameterAsText(2) # Source of DHA polygons with their factor results
+HAZAREA_FC = arcpy.GetParameterAsText(2) # Source of DHA polygons with their criteria data
 TARGET_FC = arcpy.GetParameterAsText(3) # New FC to create with the user's input
-# need to create a table with the settings used to create the TARGET_FC?
 LOWSCORE_BREAKPOINT = int(arcpy.GetParameterAsText(4))  # Defines the low score breakpoint
 MEDIUMSCORE_BREAKPOINT = int(arcpy.GetParameterAsText(5)) # Defines the Medium score breakpoint
 BAREAREA_CODE = int(arcpy.GetParameterAsText(6)) # Defines the bare area land cover code
@@ -322,7 +321,7 @@ try:
 
 	# Check if the source feature class has the required attribute fields.
 	for checkfield in REQUIRED_FIELDS:
-		if not fieldexist(SOURCE_FC, checkfield):
+		if not fieldexist(HAZAREA_FC, checkfield):
 			LOGGER.debug("Check for field: " + checkfield)
 			LOGGER.error("The field "+ checkfield +" does not exist.")
 			raise arcpy.ExecuteError
@@ -335,13 +334,13 @@ try:
 	FIELDLIST = REQUIRED_FIELDS
 
 	# We need data to work with, so let's check first if it has any content
-	if int(arcpy.GetCount_management(SOURCE_FC)[0]) == 0:
+	if int(arcpy.GetCount_management(HAZAREA_FC)[0]) == 0:
 		LOGGER.error("{0} has no features. Please use a feature class \
-					   that contains data.".format(SOURCE_FC))
+					   that contains data.".format(HAZAREA_FC))
 		raise arcpy.ExecuteError
 
 	# Get the total number of records
-	RECORD_COUNT = int(arcpy.GetCount_management(SOURCE_FC).getOutput(0))
+	RECORD_COUNT = int(arcpy.GetCount_management(HAZAREA_FC).getOutput(0))
 	COUNTER = 0
 	LOGGER.info("Total number of hazard features: " + str(RECORD_COUNT))
 
@@ -349,7 +348,7 @@ try:
 	START_TIME = time.time()
 
 	LOGGER.debug("Copying the Source FC to its new location")
-	arcpy.Copy_management(SOURCE_FC, TARGET_FC)
+	arcpy.Copy_management(HAZAREA_FC, TARGET_FC)
 
 	LOGGER.debug("Starting the processing of the Target FC")
 

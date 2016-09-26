@@ -67,7 +67,7 @@ def fieldexist(featureclass, fieldname):
 LOGLEVEL = str(arcpy.GetParameterAsText(0)).upper()
 LOGDIR = arcpy.GetParameterAsText(1)
 # Variable to store the location of the feature class that will be modified
-TARGET_FC = arcpy.GetParameterAsText(2)
+HAZAREA_FC = arcpy.GetParameterAsText(2)
 
 arcpy.env.addOutputsToMap = False # Set this with user input?
 
@@ -99,17 +99,17 @@ try:
     # Start the process by first running some sanity checks
     # Check if we can obtain a schema lock - adapted from
     # https://pro.arcgis.com/en/pro-app/arcpy/functions/testschemalock.htm
-    if not arcpy.TestSchemaLock(TARGET_FC):
+    if not arcpy.TestSchemaLock(HAZAREA_FC):
     # Warn the user that the required schema lock could not be obtained.
         LOGGER.error("Unable to acquire the necessary schema lock on {0} \
-                       ".format(TARGET_FC))
+                       ".format(HAZAREA_FC))
         raise arcpy.ExecuteError
 
     # Check if the feature class has any features before we start
-    if int(arcpy.GetCount_management(TARGET_FC)[0]) == 0:
+    if int(arcpy.GetCount_management(HAZAREA_FC)[0]) == 0:
         LOGGER.error("{0} has no features. Please use a feature class that \
                       already contains the required features and attributes." \
-                      .format(TARGET_FC))
+                      .format(HAZAREA_FC))
         raise arcpy.ExecuteError
 
     # Define an empty list to hold the lists of fields and their parameters
@@ -202,16 +202,16 @@ try:
     # Test to see if the required fields already exist in the feature class
     # Loop through the array of fields and test against the field name.
     # Throw an error if a match is found.
-    if fieldexist(TARGET_FC, "INSIDE_X"):
+    if fieldexist(HAZAREA_FC, "INSIDE_X"):
         LOGGER.error("The field INSIDE_X already exists.")
         STOP_SCRIPT = "Yes"
 
-    if fieldexist(TARGET_FC, "INSIDE_Y"):
+    if fieldexist(HAZAREA_FC, "INSIDE_Y"):
         LOGGER.error("The field INSIDE_Y already exists.")
         STOP_SCRIPT = "Yes"
 
     for row in ARRAY_FIELDS:
-        if fieldexist(TARGET_FC, row[0]):
+        if fieldexist(HAZAREA_FC, row[0]):
             LOGGER.error("The field "+str(row[0])+" already exists.")
             STOP_SCRIPT = "Yes"
 
@@ -223,11 +223,11 @@ try:
     # fields to the feature class. Other shape types are not supported, so raise
     # an error to stop the process.
     # SEE http://pro.arcgis.com/en/pro-app/tool-reference/data-management/add-geometry-attributes.htm
-    FC_DESC = arcpy.Describe(TARGET_FC)
+    FC_DESC = arcpy.Describe(HAZAREA_FC)
     if FC_DESC.shapeType == "Polygon":
         try:
             LOGGER.info("Adding the inside centroid X and Y coordinates.")
-            arcpy.AddGeometryAttributes_management(Input_Features=TARGET_FC,
+            arcpy.AddGeometryAttributes_management(Input_Features=HAZAREA_FC,
                                                    Geometry_Properties="CENTROID_INSIDE",
                                                    Length_Unit="", Area_Unit="",
                                                    Coordinate_System="")
@@ -243,7 +243,7 @@ try:
     # in the array.
     for row in ARRAY_FIELDS:
         arcpy.AddField_management(
-            in_table=TARGET_FC, field_name=row[0],
+            in_table=HAZAREA_FC, field_name=row[0],
             field_type=row[1], field_precision=row[2], field_scale=row[3],
             field_length=row[4], field_alias=row[5], field_is_nullable=row[6],
             field_is_required=row[7], field_domain=row[8])
