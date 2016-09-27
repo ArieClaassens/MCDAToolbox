@@ -1,7 +1,5 @@
 # Check for typos and spelling in help content.
 
-# Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
-
 # Move the check_proj code into the mismatch check function - DO LAST?
 
 # Add a filter in script on parameters - define the specific feature class types that are allowed as input, e.g. POLYGON
@@ -147,6 +145,9 @@
 # Swap images in Tool Help so thumbnail is loaded at top
 
 # Run PyLint tests
+
 # Add source info to the criteria data field help, e.g. OSM Key Features export, in Toolbox
 
 # Add Pop Impact script that allows user to work with raster data (currently using vector feature class) - Future option
+
+# Check if FIELDLIST is used in the arcpy.da.UpdateCursor field listing. Otherwise we're wasting good code
