@@ -37,9 +37,6 @@
     <Compile Include="get_pop_impact.py" />
     <Compile Include="get_rivers.py" />
     <Compile Include="get_slope.py" />
-    <Compile Include="notes.py">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="show_license.py" />
   </ItemGroup>
   <Import Project="$(PtvsTargetsFile)" Condition="Exists($(PtvsTargetsFile))" />
