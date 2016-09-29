@@ -76,18 +76,19 @@ def fieldexist(featureclass, fieldname):
 
 def check_weights_same(weightslist):
     """
-    Check for at least four unique weights assigned to the full list of factors.
+    Check for at least three unique weights assigned to the full list of factors.
     Convert the list of factor weights to a set and back to a list and then
     check the number of list items.
     Ensures that the user does not assign the same value to all factors.
     """
     privateset = set(weightslist)
     uniquelist = list(privateset)
-    if len(uniquelist) > 4:
+    if len(uniquelist) >= 3:
         LOGGER.debug("Length of the unique values list: " + str(len(uniquelist)))
         return True
     else:
-        LOGGER.error("Length of the unique values list: " + str(len(uniquelist)))
+        LOGGER.debug("Length of the unique values list: " + str(len(uniquelist)))
+        LOGGER.error("Please assign at least three different factor weights.")
         return False
 
 # SDSS priority calculation formulas
@@ -310,9 +311,9 @@ try:
                    RIVERS_WEIGHT, SLOPE_WEIGHT, POPULATION_WEIGHT]
 
     if check_weights_same(WEIGHT_LIST):
-        LOGGER.debug("The weights do not all match")
+        LOGGER.debug("Decision weights are spread over three or more values")
     else:
-        LOGGER.error("Please assign at least four different factor weights.")
+        LOGGER.error("Please assign more unique decision weights.")
         raise arcpy.ExecuteError
 
     # Check if the source feature class has the required attribute fields.
@@ -446,3 +447,4 @@ finally:
     LOGGER.removeHandler(HANDLER)
     HANDLER.close()
     logging.shutdown()
+

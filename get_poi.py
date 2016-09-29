@@ -73,7 +73,7 @@ def get_projection(featureclass):
     description = arcpy.Describe(featureclass)
     # Export the full text string to ensure a 100% match, preventing
     # discrepancies with differing central meridians, for example.
-    proj = description.SpatialReference.exporttostring()
+    proj = description.SpatialReference.Name
     return proj
 
 def compare_list_items(checklist):
@@ -311,3 +311,4 @@ finally:
     LOGGER.removeHandler(HANDLER)
     HANDLER.close()
     logging.shutdown()
+

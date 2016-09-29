@@ -4,6 +4,8 @@
 
 # Add a filter in script on parameters - define the specific feature class types that are allowed as input, e.g. POLYGON
 
+# License level – see https://geonet.esri.com/docs/DOC-1927 (Arcpy and License levels) --- NEED TO TEST!!!
+
 # What is up with Rasters and NoData?
 
 # OpenData API

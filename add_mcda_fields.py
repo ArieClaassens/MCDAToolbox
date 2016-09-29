@@ -70,7 +70,7 @@ LOGDIR = arcpy.GetParameterAsText(1)
 HAZAREA_FC = arcpy.GetParameterAsText(2)
 
 arcpy.env.addOutputsToMap = False # Set this with user input?
-
+STOP_SCRIPT = "No" # Set default value for error checking results variable
 # Logging configuration - set up and inform the user
 DATE_STRING = time.strftime("%Y%m%d")
 LOGFILE = unicode(LOGDIR + '\\'+ DATE_STRING +
