@@ -19,10 +19,18 @@ Name=WIP
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0]
 ClassName=TProjectFileNode
+FileName=$[Project-Path]WIP\AddMCEFields_ORIGINAL.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]WIP\clip_landcover.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node2]
+ClassName=TProjectFileNode
 FileName=$[Project-Path]WIP\raster_checks.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
-Count=1
+Count=3
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node1]
 ClassName=TProjectFileNode
@@ -34,74 +42,78 @@ FileName=$[Project-Path]calc_score.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node3]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]clip_landcover.py
+FileName=$[Project-Path]create_report.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node4]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]create_report.py
+FileName=$[Project-Path]get_accidents.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node5]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_accidents.py
+FileName=$[Project-Path]get_aspect.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node6]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_aspect.py
+FileName=$[Project-Path]get_hazard_count.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node7]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_hazard_count.py
+FileName=$[Project-Path]get_infrastructure.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node8]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_infrastructure.py
+FileName=$[Project-Path]get_keyfeatures.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node9]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_keyfeatures.py
+FileName=$[Project-Path]get_landcover.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node10]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_landcover.py
+FileName=$[Project-Path]get_poi.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node11]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_poi.py
+FileName=$[Project-Path]get_pop_impact.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node12]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_pop_impact.py
+FileName=$[Project-Path]get_rivers.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node13]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_primary_cluster_location.py
+FileName=$[Project-Path]get_slope.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node14]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_rivers.py
+FileName=$[Project-Path]main.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node15]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]get_slope.py
+FileName=$[Project-Path]notes.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node16]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]main.py
+FileName=$[Project-Path]show_license.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node17]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]notes.py
+FileName=$[Project-Path]tests.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node18]
 ClassName=TProjectFileNode
-FileName=$[Project-Path]tests.py
+FileName=$[Project-Path]tests2.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node19]
+ClassName=TProjectFileNode
+FileName=$[Project-Path]tests3.py
+
+[Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes\Node20]
 ClassName=TProjectFileNode
 FileName=$[Project-Path]testStuff.py
 
 [Project\ChildNodes\Node0\ChildNodes\Node0\ChildNodes]
-Count=20
+Count=21
 
 [Project\ChildNodes\Node0\ChildNodes]
 Count=1
